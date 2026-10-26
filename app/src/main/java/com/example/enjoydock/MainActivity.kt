@@ -61,10 +61,24 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
+        // --- ГАЛОЧКА БЛОКИРОВКИ ---
+        val cbLock = CheckBox(this).apply {
+            text = "Заблокировать перемещение виджета"
+            textSize = 16f
+            isChecked = prefs.getBoolean("is_locked", false)
+            setPadding(0, 30, 0, 10)
+            setOnCheckedChangeListener { _, isChecked ->
+                prefs.edit().putBoolean("is_locked", isChecked).apply()
+                startForegroundService(Intent(this@MainActivity, FloatingDockService::class.java))
+            }
+        }
+        layout.addView(cbLock)
+
+        // --- НАСТРОЙКА ПРОЗРАЧНОСТИ ---
         layout.addView(TextView(this).apply {
             text = "\nПрозрачность виджета (0 = невидимый, 100 = сплошной):"
             textSize = 16f
-            setPadding(0, 30, 0, 10)
+            setPadding(0, 10, 0, 10)
         })
 
         val transparencyLabel = TextView(this).apply {
@@ -92,6 +106,7 @@ class MainActivity : AppCompatActivity() {
         }
         layout.addView(seekBarTransparency)
 
+        // --- НАСТРОЙКА РАЗМЕРА ВИДЖЕТА ---
         layout.addView(TextView(this).apply {
             text = "\nРазмер виджета (50% - компактный, 200% - крупный):"
             textSize = 16f

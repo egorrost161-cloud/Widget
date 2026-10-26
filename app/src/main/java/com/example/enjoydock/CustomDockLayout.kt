@@ -8,30 +8,33 @@ import kotlin.math.abs
 class CustomDockLayout(context: Context) : LinearLayout(context) {
     
     var isLocked = false
+    
+    // Callback'и для связи с сервисом
+    var onDragStart: (() -> Unit)? = null
     var onDrag: ((Int, Int) -> Unit)? = null
+    var onDragEnd: (() -> Unit)? = null
     
     private var initialTouchX = 0f
     private var initialTouchY = 0f
     private var isDragging = false
 
     override fun onInterceptTouchEvent(ev: MotionEvent): Boolean {
-        if (isLocked) return false // Если заблокировано, передаем нажатия иконкам
+        if (isLocked) return false
 
         when (ev.action) {
             MotionEvent.ACTION_DOWN -> {
                 initialTouchX = ev.rawX
                 initialTouchY = ev.rawY
                 isDragging = false
-                return false // Даем иконке получить нажатие
+                return false 
             }
             MotionEvent.ACTION_MOVE -> {
                 val dx = ev.rawX - initialTouchX
                 val dy = ev.rawY - initialTouchY
-                // Если сдвинули палец больше чем на 30 пикселей, начинаем перетаскивание
                 if (abs(dx) > 30 || abs(dy) > 30) {
                     isDragging = true
                     parent.requestDisallowInterceptTouchEvent(true)
-                    return true // Перехватываем управление
+                    return true 
                 }
             }
         }
@@ -49,15 +52,24 @@ class CustomDockLayout(context: Context) : LinearLayout(context) {
             }
             MotionEvent.ACTION_MOVE -> {
                 if (isDragging) {
-                    // Вычисляем смещение и передаем его в сервис
-                    val dx = (ev.rawX - initialTouchX).toInt()
-                    val dy = (ev.rawY - initialTouchY).toInt()
-                    onDrag?.invoke(dx, dy)
+                    if (ev.action == MotionEvent.ACTION_MOVE && ev.historySize > 0) {
+                        // Плавное движение с учетом истории событий
+                        val dx = (ev.rawX - initialTouchX).toInt()
+                        val dy = (ev.rawY - initialTouchY).toInt()
+                        onDrag?.invoke(dx, dy)
+                    } else {
+                        val dx = (ev.rawX - initialTouchX).toInt()
+                        val dy = (ev.rawY - initialTouchY).toInt()
+                        onDrag?.invoke(dx, dy)
+                    }
                 }
                 return true
             }
             MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                isDragging = false
+                if (isDragging) {
+                    isDragging = false
+                    onDragEnd?.invoke() // Сохраняем позицию
+                }
                 return true
             }
         }

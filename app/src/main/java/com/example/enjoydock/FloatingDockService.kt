@@ -11,19 +11,16 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Build
 import android.os.IBinder
 import android.view.Gravity
-import android.view.MotionEvent
-import android.view.View
 import android.view.WindowManager
 import android.widget.HorizontalScrollView
 import android.widget.ImageView
 import android.widget.LinearLayout
-import android.widget.TextView
 
 class FloatingDockService : Service() {
 
     private lateinit var windowManager: WindowManager
     private var dockWrapper: HorizontalScrollView? = null
-    private var dockView: LinearLayout? = null
+    private var dockView: CustomDockLayout? = null
     private lateinit var params: WindowManager.LayoutParams
 
     override fun onCreate() {
@@ -62,6 +59,7 @@ class FloatingDockService : Service() {
     private fun createDock() {
         val prefs = getSharedPreferences("dock_settings", Context.MODE_PRIVATE)
         val selectedPackages = prefs.getStringSet("selected_apps", HashSet()) ?: HashSet()
+        val isLocked = prefs.getBoolean("is_locked", false) // Читаем настройку блокировки
         
         val transparency = prefs.getInt("dock_transparency", 80)
         val alpha = (transparency * 255) / 100
@@ -76,9 +74,9 @@ class FloatingDockService : Service() {
         val cornerRadius = 30f * scale
         val iconSize = (120 * scale).toInt()
         val iconMargin = (15 * scale).toInt()
-        val textSizeBtn = 24f * scale
 
-        dockView = LinearLayout(this).apply {
+        // Используем наш кастомный класс
+        dockView = CustomDockLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setPadding(paddingLeftRight, paddingTopBottom, paddingLeftRight, paddingTopBottom)
@@ -88,15 +86,19 @@ class FloatingDockService : Service() {
                 this.cornerRadius = cornerRadius
             }
             background = bg
+            
+            // Передаем настройку блокировки
+            this.isLocked = isLocked
+            
+            // Обработка перетаскивания
+            this.onDrag = { dx, dy ->
+                params.x += dx
+                params.y += dy
+                // Корректируем начальную точку касания, чтобы не было рывков
+                // (в CustomDockLayout это уже учтено через rawX/rawY)
+                windowManager.updateViewLayout(dockWrapper, params)
+            }
         }
-
-        val dragHandle = TextView(this).apply {
-            text = "≡"
-            textSize = textSizeBtn
-            setTextColor(Color.GRAY)
-            setPadding(0, 0, (20 * scale).toInt(), 0)
-        }
-        dockView?.addView(dragHandle)
 
         val pm = packageManager
         for (pkg in selectedPackages) {
@@ -119,48 +121,10 @@ class FloatingDockService : Service() {
             } catch (e: Exception) {}
         }
 
-        val settingsBtn = TextView(this).apply {
-            text = "⚙️"
-            textSize = textSizeBtn
-            setPadding((20 * scale).toInt(), 0, 0, 0)
-            setOnClickListener {
-                val intent = Intent(this@FloatingDockService, MainActivity::class.java)
-                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                startActivity(intent)
-            }
-        }
-        dockView?.addView(settingsBtn)
-
         dockWrapper = HorizontalScrollView(this).apply {
             isHorizontalScrollBarEnabled = false
             addView(dockView)
         }
-
-        dragHandle.setOnTouchListener(object : View.OnTouchListener {
-            private var initialX = 0
-            private var initialY = 0
-            private var initialTouchX = 0f
-            private var initialTouchY = 0f
-
-            override fun onTouch(v: View, event: MotionEvent): Boolean {
-                when (event.action) {
-                    MotionEvent.ACTION_DOWN -> {
-                        initialX = params.x
-                        initialY = params.y
-                        initialTouchX = event.rawX
-                        initialTouchY = event.rawY
-                        return true
-                    }
-                    MotionEvent.ACTION_MOVE -> {
-                        params.x = initialX + (event.rawX - initialTouchX).toInt()
-                        params.y = initialY + (event.rawY - initialTouchY).toInt()
-                        windowManager.updateViewLayout(dockWrapper, params)
-                        return true
-                    }
-                }
-                return false
-            }
-        })
 
         val displayMetrics = resources.displayMetrics
         val maxWidth = (displayMetrics.widthPixels * 0.9).toInt()

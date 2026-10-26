@@ -81,15 +81,11 @@ public class FloatingDockService extends Service {
         int iconSize = (int) (120 * scale);
         int iconMargin = (int) (15 * scale);
 
+        // 1. Внутренний контейнер ТЕПЕРЬ БЕЗ ФОНА
         LinearLayout dockLayout = new LinearLayout(this);
         dockLayout.setOrientation(LinearLayout.HORIZONTAL);
         dockLayout.setGravity(Gravity.CENTER_VERTICAL);
         dockLayout.setPadding(paddingLR, paddingTB, paddingLR, paddingTB);
-
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(bgColor);
-        bg.setCornerRadius(cornerRadius);
-        dockLayout.setBackground(bg);
 
         for (String pkg : prefs.getStringSet("selected_apps", new java.util.HashSet<>())) {
             try {
@@ -110,13 +106,19 @@ public class FloatingDockService extends Service {
             } catch (Exception e) {}
         }
 
-        // Используем наш новый DockScrollView
         dockWrapper = new DockScrollView(this);
         dockWrapper.setHorizontalScrollBarEnabled(false);
         dockWrapper.addView(dockLayout);
 
-        // ВАЖНО: Задаем фиксированную ширину окна (85% экрана).
-        // Без этого HorizontalScrollView не поймет, что контент не влезает, и не будет листать!
+        // 2. ФОН И ЗАКРУГЛЕНИЯ ПРИМЕНЯЕМ К САМОЙ РАМКЕ (ScrollView)
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(bgColor);
+        bg.setCornerRadius(cornerRadius);
+        dockWrapper.setBackground(bg);
+        
+        // 3. ОЧЕНЬ ВАЖНО: Заставляем рамку обрезать всё внутри по закругленным краям
+        dockWrapper.setClipToOutline(true);
+
         int maxWidth = (int) (getResources().getDisplayMetrics().widthPixels * 0.85);
 
         params = new WindowManager.LayoutParams(
@@ -133,7 +135,6 @@ public class FloatingDockService extends Service {
         params.x = prefs.getInt("dock_x", 50);
         params.y = prefs.getInt("dock_y", 400);
 
-        // Подключаем перетаскивание
         if (!isLocked) {
             dockWrapper.setStartPosition(params.x, params.y);
 

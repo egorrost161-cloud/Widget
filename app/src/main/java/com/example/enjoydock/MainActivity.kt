@@ -64,7 +64,8 @@ class MainActivity : AppCompatActivity() {
         layout.addView(Button(this).apply {
             text = "2. Разрешить статистику использования"
             setOnClickListener {
-                startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+                // ИСПРАВЛЕНИЕ: создаем Intent через setAction()
+                startActivity(Intent().setAction(Settings.ACTION_USAGE_ACCESS_SETTINGS))
                 Toast.makeText(this@MainActivity, "Найди Виджет и разреши доступ", Toast.LENGTH_LONG).show()
             }
         })
@@ -91,7 +92,7 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 20, 0, 10)
             setOnCheckedChangeListener { _, isChecked ->
                 prefs.edit().putBoolean("is_locked", isChecked).apply()
-                startForegroundService(Intent(this, FloatingDockService::class.java))
+                startForegroundService(Intent(this@MainActivity, FloatingDockService::class.java))
             }
         })
 
@@ -189,7 +190,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // ИСПОЛЬЗУЕМ NESTEDSCROLLVIEW ВМЕСТО ОБЫЧНОГО SCROLLVIEW
         val nestedScroll = NestedScrollView(this).apply {
             addView(layout)
         }

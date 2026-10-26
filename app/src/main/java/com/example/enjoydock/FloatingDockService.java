@@ -15,8 +15,6 @@ import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
 import android.os.IBinder;
 import android.view.Gravity;
-import android.view.MotionEvent;
-import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -24,14 +22,11 @@ import android.widget.LinearLayout;
 public class FloatingDockService extends Service {
 
     private WindowManager windowManager;
-    private LinearLayout dockLayout;
+    private DockScrollView dockWrapper;
     private WindowManager.LayoutParams params;
     private SharedPreferences prefs;
 
-    // Переменные для перетаскивания
-    private float touchStartX, touchStartY;
-    private int startX, startY;
-    private boolean isDragging = false;
+    private int startWindowX, startWindowY;
 
     @Override
     public void onCreate() {
@@ -64,8 +59,8 @@ public class FloatingDockService extends Service {
             startForeground(1, notification);
         }
 
-        if (dockLayout != null) {
-            windowManager.removeView(dockLayout);
+        if (dockWrapper != null) {
+            windowManager.removeView(dockWrapper);
             createDock();
         }
         return START_STICKY;
@@ -88,8 +83,7 @@ public class FloatingDockService extends Service {
         int iconSize = (int) (120 * scale);
         int iconMargin = (int) (15 * scale);
 
-        // 1. Создаем обычный контейнер (без ScrollView)
-        dockLayout = new LinearLayout(this);
+        LinearLayout dockLayout = new LinearLayout(this);
         dockLayout.setOrientation(LinearLayout.HORIZONTAL);
         dockLayout.setGravity(Gravity.CENTER_VERTICAL);
         dockLayout.setPadding(paddingLR, paddingTB, paddingLR, paddingTB);
@@ -99,7 +93,6 @@ public class FloatingDockService extends Service {
         bg.setCornerRadius(cornerRadius);
         dockLayout.setBackground(bg);
 
-        // 2. Загружаем иконки
         for (String pkg : prefs.getStringSet("selected_apps", new java.util.HashSet<>())) {
             try {
                 ImageView imageView = new ImageView(this);
@@ -119,15 +112,17 @@ public class FloatingDockService extends Service {
             } catch (Exception e) {}
         }
 
-        // 3. Параметры окна (ширина по содержимому)
-        int type = Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
-                ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
-                : WindowManager.LayoutParams.TYPE_PHONE;
+        // Используем наш новый DockScrollView
+        dockWrapper = new DockScrollView(this);
+        dockWrapper.setHorizontalScrollBarEnabled(false);
+        dockWrapper.addView(dockLayout);
 
         params = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
-                type,
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
+                        ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                        : WindowManager.LayoutParams.TYPE_PHONE,
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE,
                 PixelFormat.TRANSLUCENT
         );
@@ -136,56 +131,43 @@ public class FloatingDockService extends Service {
         params.x = prefs.getInt("dock_x", 50);
         params.y = prefs.getInt("dock_y", 400);
 
-        // 4. Логика перетаскивания
-        dockLayout.setOnTouchListener(new View.OnTouchListener() {
-            public boolean onTouch(View v, MotionEvent event) {
-                if (isLocked) {
-                    return false;
+        // Ограничиваем ширину виджета 85% от экрана, чтобы он не улетал за края
+        int maxWidth = (int) (getResources().getDisplayMetrics().widthPixels * 0.85);
+        params.width = maxWidth;
+
+        // --- УМНОЕ ПЕРЕТАСКИВАНИЕ ---
+        if (!isLocked) {
+            dockWrapper.setDragListener(new DockScrollView.OnDragListener() {
+                @Override
+                public void onDragStart() {
+                    startWindowX = params.x;
+                    startWindowY = params.y;
                 }
 
-                switch (event.getAction()) {
-                    case MotionEvent.ACTION_DOWN:
-                        touchStartX = event.getRawX();
-                        touchStartY = event.getRawY();
-                        startX = params.x;
-                        startY = params.y;
-                        isDragging = false;
-                        return false; // Пропускаем к иконкам
-                    case MotionEvent.ACTION_MOVE:
-                        float dx = event.getRawX() - touchStartX;
-                        float dy = event.getRawY() - touchStartY;
-                        
-                        if (Math.abs(dx) > 10 || Math.abs(dy) > 10) {
-                            isDragging = true;
-                        }
-                        
-                        if (isDragging) {
-                            params.x = startX + (int) dx;
-                            params.y = startY + (int) dy;
-                            windowManager.updateViewLayout(dockLayout, params);
-                            return true; // Забираем событие, чтобы не нажимались иконки
-                        }
-                        return false;
-                    case MotionEvent.ACTION_UP:
-                        if (isDragging) {
-                            prefs.edit()
-                                    .putInt("dock_x", params.x)
-                                    .putInt("dock_y", params.y)
-                                    .apply();
-                        }
-                        return false;
+                @Override
+                public void onDrag(float dx, float dy) {
+                    params.x = startWindowX + (int) dx;
+                    params.y = startWindowY + (int) dy;
+                    windowManager.updateViewLayout(dockWrapper, params);
                 }
-                return false;
-            }
-        });
 
-        windowManager.addView(dockLayout, params);
+                @Override
+                public void onDragEnd() {
+                    prefs.edit()
+                            .putInt("dock_x", params.x)
+                            .putInt("dock_y", params.y)
+                            .apply();
+                }
+            });
+        }
+
+        windowManager.addView(dockWrapper, params);
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (dockLayout != null) windowManager.removeView(dockLayout);
+        if (dockWrapper != null) windowManager.removeView(dockWrapper);
     }
 
     @Override

@@ -1,6 +1,5 @@
 package com.example.enjoydock
 
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
@@ -12,7 +11,6 @@ import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.widget.*
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
@@ -26,21 +24,6 @@ class MainActivity : AppCompatActivity() {
     private val selectedHidePackages = HashSet<String>()
 
     data class AppInfo(val name: String, val pkg: String)
-
-    private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == Activity.RESULT_OK) {
-            val uri: Uri? = result.data?.data
-            if (uri != null) {
-                try {
-                    contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
-                } catch (e: Exception) {}
-                
-                prefs.edit().putString("bg_image_uri", uri.toString()).apply()
-                startForegroundService(Intent(this@MainActivity, FloatingDockService::class.java))
-                Toast.makeText(this@MainActivity, "Фон обновлён!", Toast.LENGTH_SHORT).show()
-            }
-        }
-    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -90,33 +73,6 @@ class MainActivity : AppCompatActivity() {
                     startForegroundService(Intent(this@MainActivity, FloatingDockService::class.java))
                     Toast.makeText(this@MainActivity, "Виджет обновлён!", Toast.LENGTH_SHORT).show()
                 }
-            }
-        })
-
-        layout.addView(TextView(this).apply {
-            text = "\nФон виджета:"
-            textSize = 18f
-            setTypeface(null, Typeface.BOLD)
-            setPadding(0, 20, 0, 10)
-        })
-
-        layout.addView(Button(this).apply {
-            text = "Выбрать картинку (обои)"
-            setOnClickListener {
-                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
-                    addCategory(Intent.CATEGORY_OPENABLE)
-                    type = "image/*"
-                }
-                pickImageLauncher.launch(intent)
-            }
-        })
-
-        layout.addView(Button(this).apply {
-            text = "Сбросить фон (вернуть цвет)"
-            setOnClickListener {
-                prefs.edit().remove("bg_image_uri").apply()
-                startForegroundService(Intent(this@MainActivity, FloatingDockService::class.java))
-                Toast.makeText(this@MainActivity, "Фон сброшен", Toast.LENGTH_SHORT).show()
             }
         })
 
@@ -176,6 +132,7 @@ class MainActivity : AppCompatActivity() {
             })
         })
 
+        // --- СПОЙЛЕР 1: Выбор приложений ---
         val toggleShowBtn = TextView(this).apply {
             text = "▼ Выбрать приложения для Виджета"
             textSize = 18f
@@ -185,8 +142,8 @@ class MainActivity : AppCompatActivity() {
         layout.addView(toggleShowBtn)
 
         listShowApps = ListView(this)
-        val showParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 600)
-        listShowApps.layoutParams = showParams
+        // ВАЖНО: Задаем фиксированную высоту, чтобы список прокручивался сам
+        listShowApps.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 800) 
         listShowApps.visibility = View.GONE
         layout.addView(listShowApps)
 
@@ -200,6 +157,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // --- СПОЙЛЕР 2: Скрытие виджета ---
         val toggleHideBtn = TextView(this).apply {
             text = "▼ Скрывать виджет на этих приложениях"
             textSize = 18f
@@ -209,7 +167,7 @@ class MainActivity : AppCompatActivity() {
         layout.addView(toggleHideBtn)
 
         listHideApps = ListView(this)
-        listHideApps.layoutParams = showParams
+        listHideApps.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 800)
         listHideApps.visibility = View.GONE
         layout.addView(listHideApps)
 

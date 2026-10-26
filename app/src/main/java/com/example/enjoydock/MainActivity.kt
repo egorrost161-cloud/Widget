@@ -12,6 +12,7 @@ import android.view.Gravity
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.widget.NestedScrollView
 
 class MainActivity : AppCompatActivity() {
 
@@ -90,7 +91,7 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 20, 0, 10)
             setOnCheckedChangeListener { _, isChecked ->
                 prefs.edit().putBoolean("is_locked", isChecked).apply()
-                startForegroundService(Intent(this@MainActivity, FloatingDockService::class.java))
+                startForegroundService(Intent(this, FloatingDockService::class.java))
             }
         })
 
@@ -148,11 +149,9 @@ class MainActivity : AppCompatActivity() {
         }
         layout.addView(toggleShowBtn)
 
-        // Устанавливаем высоту в 400dp, чтобы список помещался на экране
-        val listHeight = (resources.displayMetrics.density * 400).toInt()
-
+        // Даем списку вес 1f, чтобы он сам занимал нужную высоту
         listShowApps = ListView(this)
-        listShowApps.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, listHeight) 
+        listShowApps.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f) 
         listShowApps.visibility = View.GONE
         layout.addView(listShowApps)
 
@@ -176,7 +175,7 @@ class MainActivity : AppCompatActivity() {
         layout.addView(toggleHideBtn)
 
         listHideApps = ListView(this)
-        listHideApps.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, listHeight)
+        listHideApps.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f)
         listHideApps.visibility = View.GONE
         layout.addView(listHideApps)
 
@@ -190,7 +189,12 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        setContentView(ScrollView(this).apply { addView(layout) })
+        // ИСПОЛЬЗУЕМ NESTEDSCROLLVIEW ВМЕСТО ОБЫЧНОГО SCROLLVIEW
+        val nestedScroll = NestedScrollView(this).apply {
+            addView(layout)
+        }
+        
+        setContentView(nestedScroll)
         loadApps()
     }
 

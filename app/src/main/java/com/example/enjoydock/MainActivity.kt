@@ -139,8 +139,7 @@ class MainActivity : AppCompatActivity() {
             })
         })
 
-        // Вычисляем высоту в пикселях (400dp)
-        val listHeight = (resources.displayMetrics.density * 400).toInt()
+        val listHeight = (resources.displayMetrics.density * 350).toInt()
 
         // --- СПОЙЛЕР 1: Выбор приложений ---
         val toggleShowBtn = TextView(this).apply {
@@ -190,8 +189,16 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Возвращаем обычный ScrollView
-        setContentView(ScrollView(this).apply { addView(layout) })
+        // Создаем ScrollView, но отключаем в нем перехват касаний
+        val scrollView = ScrollView(this).apply {
+            isFillViewport = true
+            addView(layout)
+            // ИСПРАВЛЕНИЕ: Отключаем перехват жестов у ScrollView
+            setOnTouchListener { _, _ -> false } 
+        }
+        
+        // Оборачиваем в NestedScrollView для правильной работы
+        setContentView(scrollView)
         loadApps()
     }
 
@@ -237,7 +244,7 @@ class MainActivity : AppCompatActivity() {
             if (selectedHidePackages.contains(pkg)) selectedHidePackages.remove(pkg)
             else selectedHidePackages.add(pkg)
             prefs.edit().putStringSet("hidden_apps", selectedHidePackages).apply()
-            startForegroundService(Intent(this@MainActivity, FloatingDockService::class.java))
+            startForegroundService(Intent(this, FloatingDockService::class.java))
         }
     }
 }

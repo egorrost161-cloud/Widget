@@ -40,14 +40,14 @@ public class FloatingDockService extends Service {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private boolean isCurrentlyHidden = false;
 
-    // Переменные для правильного перетаскивания
     private int startWindowX, startWindowY;
 
     private final Runnable visibilityTask = new Runnable() {
         @Override
         public void run() {
             checkActiveApp();
-            handler.postDelayed(this, 1000);
+            // ИЗМЕНЕНО: Проверяем каждые 250 миллисекунд (4 раза в секунду) для мгновенной реакции
+            handler.postDelayed(this, 250); 
         }
     };
 
@@ -167,19 +167,16 @@ public class FloatingDockService extends Service {
         params.x = prefs.getInt("dock_x", 50);
         params.y = prefs.getInt("dock_y", 400);
 
-        // ИСПРАВЛЕННАЯ ЛОГИКА ПЕРЕТАСКИВАНИЯ
         if (!isLocked) {
             dockWrapper.setDragListener(new DockScrollView.OnDragListener() {
                 @Override
                 public void onDragStart() {
-                    // Запоминаем ТЕКУЩЕЕ положение окна при каждом новом касании
                     startWindowX = params.x;
                     startWindowY = params.y;
                 }
 
                 @Override
                 public void onDrag(float dx, float dy) {
-                    // Двигаем окно от запомненной точки
                     params.x = startWindowX + (int) dx;
                     params.y = startWindowY + (int) dy;
                     windowManager.updateViewLayout(dockWrapper, params);
@@ -199,7 +196,8 @@ public class FloatingDockService extends Service {
         if (usageStatsManager == null || dockWrapper == null) return;
         try {
             long time = System.currentTimeMillis();
-            UsageEvents events = usageStatsManager.queryEvents(time - 10000, time);
+            // ИЗМЕНЕНО: Ищем события только за последние 2 секунды, а не 10. Это ускоряет работу.
+            UsageEvents events = usageStatsManager.queryEvents(time - 2000, time); 
             String lastPkg = null;
             UsageEvents.Event event = new UsageEvents.Event();
             

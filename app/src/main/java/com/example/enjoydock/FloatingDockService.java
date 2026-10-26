@@ -40,6 +40,9 @@ public class FloatingDockService extends Service {
     private final Handler handler = new Handler(Looper.getMainLooper());
     private boolean isCurrentlyHidden = false;
 
+    // Переменные для правильного перетаскивания
+    private int startWindowX, startWindowY;
+
     private final Runnable visibilityTask = new Runnable() {
         @Override
         public void run() {
@@ -133,7 +136,6 @@ public class FloatingDockService extends Service {
         dockWrapper.setHorizontalScrollBarEnabled(false);
         dockWrapper.addView(dockLayout);
 
-        // Возвращаем обычный цветной фон
         GradientDrawable bg = new GradientDrawable();
         bg.setColor(bgColor);
         bg.setCornerRadius(cornerRadius);
@@ -165,15 +167,24 @@ public class FloatingDockService extends Service {
         params.x = prefs.getInt("dock_x", 50);
         params.y = prefs.getInt("dock_y", 400);
 
+        // ИСПРАВЛЕННАЯ ЛОГИКА ПЕРЕТАСКИВАНИЯ
         if (!isLocked) {
-            dockWrapper.setStartPosition(params.x, params.y);
             dockWrapper.setDragListener(new DockScrollView.OnDragListener() {
                 @Override
-                public void onDrag(int x, int y) {
-                    params.x = x;
-                    params.y = y;
+                public void onDragStart() {
+                    // Запоминаем ТЕКУЩЕЕ положение окна при каждом новом касании
+                    startWindowX = params.x;
+                    startWindowY = params.y;
+                }
+
+                @Override
+                public void onDrag(float dx, float dy) {
+                    // Двигаем окно от запомненной точки
+                    params.x = startWindowX + (int) dx;
+                    params.y = startWindowY + (int) dy;
                     windowManager.updateViewLayout(dockWrapper, params);
                 }
+
                 @Override
                 public void onDragEnd() {
                     prefs.edit().putInt("dock_x", params.x).putInt("dock_y", params.y).apply();

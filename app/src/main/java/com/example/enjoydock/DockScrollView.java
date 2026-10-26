@@ -6,16 +6,14 @@ import android.widget.HorizontalScrollView;
 
 public class DockScrollView extends HorizontalScrollView {
     public interface OnDragListener {
-        void onDrag(int x, int y);
+        void onDragStart();
+        void onDrag(float dx, float dy);
         void onDragEnd();
     }
 
     private float touchStartX, touchStartY;
-    private int startX, startY;
     private boolean isDragging = false;
     private OnDragListener dragListener;
-    
-    // НОВОЕ: Флаг блокировки
     private boolean isLocked = false;
 
     public DockScrollView(Context context) {
@@ -26,58 +24,49 @@ public class DockScrollView extends HorizontalScrollView {
         this.dragListener = listener;
     }
 
-    public void setStartPosition(int x, int y) {
-        this.startX = x;
-        this.startY = y;
-    }
-
-    // НОВЫЙ МЕТОД: Устанавливаем режим
     public void setLocked(boolean locked) {
         this.isLocked = locked;
     }
 
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
-        // ЕСЛИ ЗАБЛОКИРОВАНО: Мы не перехватываем касания.
-        // Пусть ScrollView сам плавно прокручивает иконки влево-вправо.
+        // Если заблокировано - работает обычная прокрутка иконок
         if (isLocked) {
             return super.onInterceptTouchEvent(ev);
         }
 
-        // ЕСЛИ РАЗБЛОКИРОВАНО: Перехватываем любые движения для перетаскивания окна
+        // Если разблокировано - мы перехватываем всё управление для перетаскивания
         switch (ev.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 touchStartX = ev.getRawX();
                 touchStartY = ev.getRawY();
                 isDragging = false;
-                return false; // Пропускаем к иконкам
+                if (dragListener != null) dragListener.onDragStart();
+                return false; // Даем иконке получить клик
             case MotionEvent.ACTION_MOVE:
-                float dx = ev.getRawX() - touchStartX;
-                float dy = ev.getRawY() - touchStartY;
-                if (Math.abs(dx) > 20 || Math.abs(dy) > 20) {
+                float dx = Math.abs(ev.getRawX() - touchStartX);
+                float dy = Math.abs(ev.getRawY() - touchStartY);
+                if (dx > 10 || dy > 10) {
                     isDragging = true;
-                    return true; // Забираем событие себе (начинаем перетаскивание)
+                    return true; // Начинаем перетаскивание
                 }
                 break;
         }
-        return super.onInterceptTouchEvent(ev);
+        return false; // ВАЖНО: не даем HorizontalScrollView перехватить свайп
     }
 
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
-        // Если заблокировано — работает обычная прокрутка
         if (isLocked) {
             return super.onTouchEvent(ev);
         }
 
-        // Если разблокировано — работает перетаскивание окна
         if (isDragging) {
             switch (ev.getAction()) {
                 case MotionEvent.ACTION_MOVE:
                     if (dragListener != null) {
-                        float dx = ev.getRawX() - touchStartX;
-                        float dy = ev.getRawY() - touchStartY;
-                        dragListener.onDrag(startX + (int) dx, startY + (int) dy);
+                        // Передаем разницу (насколько сдвинулся палец)
+                        dragListener.onDrag(ev.getRawX() - touchStartX, ev.getRawY() - touchStartY);
                     }
                     return true;
                 case MotionEvent.ACTION_UP:
@@ -87,6 +76,6 @@ public class DockScrollView extends HorizontalScrollView {
                     return true;
             }
         }
-        return super.onTouchEvent(ev);
+        return false;
     }
 }

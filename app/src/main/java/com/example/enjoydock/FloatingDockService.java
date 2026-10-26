@@ -46,7 +46,7 @@ public class FloatingDockService extends Service {
         @Override
         public void run() {
             checkActiveApp();
-            // ИЗМЕНЕНО: Проверяем каждые 250 миллисекунд (4 раза в секунду) для мгновенной реакции
+            // Проверяем каждые 250 мс для мгновенной реакции
             handler.postDelayed(this, 250); 
         }
     };
@@ -113,7 +113,10 @@ public class FloatingDockService extends Service {
         dockLayout.setGravity(Gravity.CENTER_VERTICAL);
         dockLayout.setPadding(paddingLR, paddingTB, paddingLR, paddingTB);
 
-        for (String pkg : prefs.getStringSet("selected_apps", new HashSet<>())) {
+        Set<String> selectedApps = prefs.getStringSet("selected_apps", new HashSet<>());
+        int iconCount = selectedApps.size();
+
+        for (String pkg : selectedApps) {
             try {
                 ImageView imageView = new ImageView(this);
                 imageView.setImageDrawable(getPackageManager().getApplicationIcon(pkg));
@@ -151,10 +154,13 @@ public class FloatingDockService extends Service {
         
         dockWrapper.setLocked(isLocked);
 
+        // Умный расчет ширины
         int maxWidth = (int) (getResources().getDisplayMetrics().widthPixels * 0.85);
+        int calculatedWidth = (iconCount * (iconSize + (iconMargin * 2))) + (paddingLR * 2);
+        int finalWidth = Math.min(calculatedWidth, maxWidth);
 
         params = new WindowManager.LayoutParams(
-                maxWidth,
+                finalWidth, 
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                         ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -196,7 +202,6 @@ public class FloatingDockService extends Service {
         if (usageStatsManager == null || dockWrapper == null) return;
         try {
             long time = System.currentTimeMillis();
-            // ИЗМЕНЕНО: Ищем события только за последние 2 секунды, а не 10. Это ускоряет работу.
             UsageEvents events = usageStatsManager.queryEvents(time - 2000, time); 
             String lastPkg = null;
             UsageEvents.Event event = new UsageEvents.Event();
@@ -210,6 +215,7 @@ public class FloatingDockService extends Service {
             
             if (lastPkg == null) return;
             
+            // Теперь виджет скрывается ТОЛЬКО если приложение добавлено в список скрытых
             Set<String> hiddenApps = prefs.getStringSet("hidden_apps", new HashSet<>());
             boolean shouldHide = hiddenApps.contains(lastPkg);
 

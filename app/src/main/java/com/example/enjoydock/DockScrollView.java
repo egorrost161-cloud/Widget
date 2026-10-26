@@ -5,14 +5,13 @@ import android.view.MotionEvent;
 import android.widget.HorizontalScrollView;
 
 public class DockScrollView extends HorizontalScrollView {
-
     public interface OnDragListener {
-        void onDragStart();
-        void onDrag(float dx, float dy);
+        void onDrag(int x, int y);
         void onDragEnd();
     }
 
     private float touchStartX, touchStartY;
+    private int startX, startY;
     private boolean isDragging = false;
     private OnDragListener dragListener;
 
@@ -24,29 +23,32 @@ public class DockScrollView extends HorizontalScrollView {
         this.dragListener = listener;
     }
 
+    public void setStartPosition(int x, int y) {
+        this.startX = x;
+        this.startY = y;
+    }
+
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
+        if (dragListener == null) return super.onInterceptTouchEvent(ev); // Если заблокировано
+
         switch (ev.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 touchStartX = ev.getRawX();
                 touchStartY = ev.getRawY();
                 isDragging = false;
-                if (dragListener != null) dragListener.onDragStart();
-                return false; // Даем нажатию дойти до иконок
-
+                return false; // Даем ScrollView или иконкам получить нажатие
             case MotionEvent.ACTION_MOVE:
                 float dx = ev.getRawX() - touchStartX;
                 float dy = ev.getRawY() - touchStartY;
 
-                // Если контент не помещается по ширине, разрешаем скролл влево-вправо
+                // Проверяем, можно ли прокручивать контент
                 boolean canScroll = getChildAt(0) != null && getChildAt(0).getWidth() > getWidth();
 
-                if (!isDragging) {
-                    // Если ведем вверх/вниз (больше 15 пикселей) ИЛИ контент помещается и мы ведем в любую сторону
-                    if (Math.abs(dy) > 15 || (!canScroll && Math.abs(dx) > 15)) {
-                        isDragging = true;
-                        return true; // Перехватываем управление для перетаскивания окна
-                    }
+                // Перехватываем, если ведем вверх/вниз ИЛИ если нет прокрутки и ведем вбок
+                if (Math.abs(dy) > 20 || (!canScroll && Math.abs(dx) > 20)) {
+                    isDragging = true;
+                    return true; // Перехватываем управление для движения окна
                 }
                 break;
         }
@@ -59,7 +61,9 @@ public class DockScrollView extends HorizontalScrollView {
             switch (ev.getAction()) {
                 case MotionEvent.ACTION_MOVE:
                     if (dragListener != null) {
-                        dragListener.onDrag(ev.getRawX() - touchStartX, ev.getRawY() - touchStartY);
+                        float dx = ev.getRawX() - touchStartX;
+                        float dy = ev.getRawY() - touchStartY;
+                        dragListener.onDrag(startX + (int) dx, startY + (int) dy);
                     }
                     return true;
                 case MotionEvent.ACTION_UP:
@@ -68,7 +72,6 @@ public class DockScrollView extends HorizontalScrollView {
                     if (dragListener != null) dragListener.onDragEnd();
                     return true;
             }
-            return true;
         }
         return super.onTouchEvent(ev);
     }

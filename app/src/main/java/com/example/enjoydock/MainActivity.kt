@@ -12,7 +12,6 @@ import android.view.Gravity
 import android.view.View
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
-import androidx.core.widget.NestedScrollView
 
 class MainActivity : AppCompatActivity() {
 
@@ -64,7 +63,6 @@ class MainActivity : AppCompatActivity() {
         layout.addView(Button(this).apply {
             text = "2. Разрешить статистику использования"
             setOnClickListener {
-                // ИСПРАВЛЕНИЕ: создаем Intent через setAction()
                 startActivity(Intent().setAction(Settings.ACTION_USAGE_ACCESS_SETTINGS))
                 Toast.makeText(this@MainActivity, "Найди Виджет и разреши доступ", Toast.LENGTH_LONG).show()
             }
@@ -141,6 +139,9 @@ class MainActivity : AppCompatActivity() {
             })
         })
 
+        // Вычисляем высоту в пикселях (400dp)
+        val listHeight = (resources.displayMetrics.density * 400).toInt()
+
         // --- СПОЙЛЕР 1: Выбор приложений ---
         val toggleShowBtn = TextView(this).apply {
             text = "▼ Выбрать приложения (порядок важен)"
@@ -150,9 +151,8 @@ class MainActivity : AppCompatActivity() {
         }
         layout.addView(toggleShowBtn)
 
-        // Даем списку вес 1f, чтобы он сам занимал нужную высоту
         listShowApps = ListView(this)
-        listShowApps.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f) 
+        listShowApps.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, listHeight) 
         listShowApps.visibility = View.GONE
         layout.addView(listShowApps)
 
@@ -176,7 +176,7 @@ class MainActivity : AppCompatActivity() {
         layout.addView(toggleHideBtn)
 
         listHideApps = ListView(this)
-        listHideApps.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 0, 1f)
+        listHideApps.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, listHeight)
         listHideApps.visibility = View.GONE
         layout.addView(listHideApps)
 
@@ -190,11 +190,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        val nestedScroll = NestedScrollView(this).apply {
-            addView(layout)
-        }
-        
-        setContentView(nestedScroll)
+        // Возвращаем обычный ScrollView
+        setContentView(ScrollView(this).apply { addView(layout) })
         loadApps()
     }
 
@@ -240,7 +237,7 @@ class MainActivity : AppCompatActivity() {
             if (selectedHidePackages.contains(pkg)) selectedHidePackages.remove(pkg)
             else selectedHidePackages.add(pkg)
             prefs.edit().putStringSet("hidden_apps", selectedHidePackages).apply()
-            startForegroundService(Intent(this, FloatingDockService::class.java))
+            startForegroundService(Intent(this@MainActivity, FloatingDockService::class.java))
         }
     }
 }

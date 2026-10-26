@@ -81,7 +81,6 @@ public class FloatingDockService extends Service {
         int iconSize = (int) (120 * scale);
         int iconMargin = (int) (15 * scale);
 
-        // 1. Внутренний контейнер ТЕПЕРЬ БЕЗ ФОНА
         LinearLayout dockLayout = new LinearLayout(this);
         dockLayout.setOrientation(LinearLayout.HORIZONTAL);
         dockLayout.setGravity(Gravity.CENTER_VERTICAL);
@@ -110,19 +109,19 @@ public class FloatingDockService extends Service {
         dockWrapper.setHorizontalScrollBarEnabled(false);
         dockWrapper.addView(dockLayout);
 
-        // 2. ФОН И ЗАКРУГЛЕНИЯ ПРИМЕНЯЕМ К САМОЙ РАМКЕ (ScrollView)
         GradientDrawable bg = new GradientDrawable();
         bg.setColor(bgColor);
         bg.setCornerRadius(cornerRadius);
         dockWrapper.setBackground(bg);
-        
-        // 3. ОЧЕНЬ ВАЖНО: Заставляем рамку обрезать всё внутри по закругленным краям
         dockWrapper.setClipToOutline(true);
+
+        // === ПЕРЕДАЕМ РЕЖИМ БЛОКИРОВКИ В КЛАСС ===
+        dockWrapper.setLocked(isLocked);
 
         int maxWidth = (int) (getResources().getDisplayMetrics().widthPixels * 0.85);
 
         params = new WindowManager.LayoutParams(
-                maxWidth, 
+                maxWidth,
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                         ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -135,6 +134,7 @@ public class FloatingDockService extends Service {
         params.x = prefs.getInt("dock_x", 50);
         params.y = prefs.getInt("dock_y", 400);
 
+        // Привязываем перетаскивание ТОЛЬКО если НЕ заблокировано
         if (!isLocked) {
             dockWrapper.setStartPosition(params.x, params.y);
 

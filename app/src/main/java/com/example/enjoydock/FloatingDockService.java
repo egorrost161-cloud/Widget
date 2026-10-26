@@ -14,9 +14,7 @@ import android.content.pm.ServiceInfo;
 import android.graphics.Color;
 import android.graphics.Outline;
 import android.graphics.PixelFormat;
-import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
-import android.net.Uri;
 import android.os.Build;
 import android.os.Handler;
 import android.os.IBinder;
@@ -28,7 +26,6 @@ import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 
-import java.io.InputStream;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -136,28 +133,12 @@ public class FloatingDockService extends Service {
         dockWrapper.setHorizontalScrollBarEnabled(false);
         dockWrapper.addView(dockLayout);
 
-        // --- УСТАНОВКА ФОНА (КАРТИНКА ИЛИ ЦВЕТ) ---
-        String bgUriString = prefs.getString("bg_image_uri", null);
-        if (bgUriString != null) {
-            try {
-                Uri bgUri = Uri.parse(bgUriString);
-                InputStream inputStream = getContentResolver().openInputStream(bgUri);
-                Drawable drawable = Drawable.createFromStream(inputStream, bgUri.toString());
-                if (drawable != null) {
-                    // Применяем прозрачность к картинке
-                    drawable.setAlpha(alpha);
-                    dockWrapper.setBackground(drawable);
-                } else {
-                    setDefaultBackground(dockWrapper, bgColor, cornerRadius);
-                }
-            } catch (Exception e) {
-                setDefaultBackground(dockWrapper, bgColor, cornerRadius);
-            }
-        } else {
-            setDefaultBackground(dockWrapper, bgColor, cornerRadius);
-        }
+        // Возвращаем обычный цветной фон
+        GradientDrawable bg = new GradientDrawable();
+        bg.setColor(bgColor);
+        bg.setCornerRadius(cornerRadius);
+        dockWrapper.setBackground(bg);
 
-        // --- ЗАКРУГЛЕНИЕ УГЛОВ ДЛЯ ЛЮБОГО ФОНА (включая картинку) ---
         dockWrapper.setOutlineProvider(new ViewOutlineProvider() {
             @Override
             public void getOutline(View view, Outline outline) {
@@ -201,13 +182,6 @@ public class FloatingDockService extends Service {
         }
 
         windowManager.addView(dockWrapper, params);
-    }
-
-    private void setDefaultBackground(View view, int color, float radius) {
-        GradientDrawable bg = new GradientDrawable();
-        bg.setColor(color);
-        bg.setCornerRadius(radius);
-        view.setBackground(bg);
     }
 
     private void checkActiveApp() {

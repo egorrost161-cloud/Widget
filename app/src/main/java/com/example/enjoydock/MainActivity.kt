@@ -1,5 +1,6 @@
 package com.example.enjoydock
 
+import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
@@ -11,6 +12,7 @@ import android.provider.Settings
 import android.view.Gravity
 import android.view.View
 import android.widget.*
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatActivity
 
 class MainActivity : AppCompatActivity() {
@@ -24,6 +26,23 @@ class MainActivity : AppCompatActivity() {
     private val selectedHidePackages = HashSet<String>()
 
     data class AppInfo(val name: String, val pkg: String)
+
+    // Лончер для выбора картинки из галереи
+    private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode == Activity.RESULT_OK) {
+            val uri: Uri? = result.data?.data
+            if (uri != null) {
+                // Сохраняем разрешение на доступ к файлу, чтобы после перезагрузки фон не пропал
+                try {
+                    contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                } catch (e: Exception) {}
+                
+                prefs.edit().putString("bg_image_uri", uri.toString()).apply()
+                startForegroundService(Intent(this, FloatingDockService::class.java))
+                Toast.makeText(this, "Фон обновлён!", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -53,7 +72,6 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        // НОВОЕ: Разрешение на статистику использования
         layout.addView(Button(this).apply {
             text = "2. Разрешить статистику использования"
             setOnClickListener {
@@ -74,6 +92,35 @@ class MainActivity : AppCompatActivity() {
                     startForegroundService(Intent(this@MainActivity, FloatingDockService::class.java))
                     Toast.makeText(this@MainActivity, "Виджет обновлён!", Toast.LENGTH_SHORT).show()
                 }
+            }
+        })
+
+        // --- НАСТРОЙКА ФОНА ---
+        layout.addView(TextView(this).apply {
+            text = "\nФон виджета:"
+            textSize = 18f
+            setTypeface(null, Typeface.BOLD)
+            setPadding(0, 20, 0, 10)
+        })
+
+        val btnPickImage = Button(this).apply {
+            text = "Выбрать картинку (обои)"
+            setOnClickListener {
+                val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
+                    addCategory(Intent.CATEGORY_OPENABLE)
+                    type = "image/*"
+                }
+                pickImageLauncher.launch(intent)
+            }
+        }
+        layout.addView(btnPickImage)
+
+        layout.addView(Button(this).apply {
+            text = "Сбросить фон (вернуть цвет)"
+            setOnClickListener {
+                prefs.edit().remove("bg_image_uri").apply()
+                startForegroundService(Intent(this@MainActivity, FloatingDockService::class.java))
+                Toast.makeText(this, "Фон сброшен", Toast.LENGTH_SHORT).show()
             }
         })
 
@@ -146,7 +193,7 @@ class MainActivity : AppCompatActivity() {
         layout.addView(toggleShowBtn)
 
         listShowApps = ListView(this)
-        val showParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 600) // Ограничиваем высоту
+        val showParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 600)
         listShowApps.layoutParams = showParams
         listShowApps.visibility = View.GONE
         layout.addView(listShowApps)

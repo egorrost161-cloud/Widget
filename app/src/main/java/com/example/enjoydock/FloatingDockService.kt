@@ -59,7 +59,7 @@ class FloatingDockService : Service() {
     private fun createDock() {
         val prefs = getSharedPreferences("dock_settings", Context.MODE_PRIVATE)
         val selectedPackages = prefs.getStringSet("selected_apps", HashSet()) ?: HashSet()
-        val isLocked = prefs.getBoolean("is_locked", false) // Читаем настройку блокировки
+        val isLocked = prefs.getBoolean("is_locked", false)
         
         val transparency = prefs.getInt("dock_transparency", 80)
         val alpha = (transparency * 255) / 100
@@ -75,7 +75,6 @@ class FloatingDockService : Service() {
         val iconSize = (120 * scale).toInt()
         val iconMargin = (15 * scale).toInt()
 
-        // Используем наш кастомный класс
         dockView = CustomDockLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
@@ -87,17 +86,7 @@ class FloatingDockService : Service() {
             }
             background = bg
             
-            // Передаем настройку блокировки
             this.isLocked = isLocked
-            
-            // Обработка перетаскивания
-            this.onDrag = { dx, dy ->
-                params.x += dx
-                params.y += dy
-                // Корректируем начальную точку касания, чтобы не было рывков
-                // (в CustomDockLayout это уже учтено через rawX/rawY)
-                windowManager.updateViewLayout(dockWrapper, params)
-            }
         }
 
         val pm = packageManager
@@ -138,8 +127,35 @@ class FloatingDockService : Service() {
             PixelFormat.TRANSLUCENT
         )
         params.gravity = Gravity.TOP or Gravity.START
-        params.x = 50
-        params.y = 400
+        
+        // ВОССТАНАВЛИВАЕМ ПОЗИЦИЮ ИЗ ПАМЯТИ (или ставим по умолчанию)
+        params.x = prefs.getInt("dock_x", 50)
+        params.y = prefs.getInt("dock_y", 400)
+
+        // --- ЛОГИКА ПЕРЕТАСКИВАНИЯ ---
+        var startX = 0
+        var startY = 0
+
+        dockView?.onDragStart = {
+            // Запоминаем, где виджет был в момент начала перетаскивания
+            startX = params.x
+            startY = params.y
+        }
+
+        dockView?.onDrag = { dx, dy ->
+            // Вычисляем новую позицию: стартовая + смещение пальца
+            params.x = startX + dx
+            params.y = startY + dy
+            windowManager.updateViewLayout(dockWrapper, params)
+        }
+
+        dockView?.onDragEnd = {
+            // СОХРАНЯЕМ НОВУЮ ПОЗИЦИЮ В ПАМЯТЬ, чтобы при блокировке или перезагрузке он не улетал обратно
+            prefs.edit()
+                .putInt("dock_x", params.x)
+                .putInt("dock_y", params.y)
+                .apply()
+        }
 
         windowManager.addView(dockWrapper, params)
     }

@@ -20,7 +20,8 @@ class MainActivity : AppCompatActivity() {
     private lateinit var listShowApps: ListView
     private lateinit var listHideApps: ListView
     
-    private val selectedShowPackages = HashSet<String>()
+    // Используем ArrayList для сохранения порядка (вместо HashSet)
+    private val selectedShowPackages = ArrayList<String>()
     private val selectedHidePackages = HashSet<String>()
 
     data class AppInfo(val name: String, val pkg: String)
@@ -28,7 +29,16 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         prefs = getSharedPreferences("dock_settings", Context.MODE_PRIVATE)
-        selectedShowPackages.addAll(prefs.getStringSet("selected_apps", HashSet()) ?: HashSet())
+        
+        // Восстанавливаем порядок из строки
+        val savedOrderString = prefs.getString("selected_apps_order", "") ?: ""
+        if (savedOrderString.isNotEmpty()) {
+            selectedShowPackages.addAll(savedOrderString.split(","))
+        } else {
+            // Если это первая версия, берем из старого Set
+            selectedShowPackages.addAll(prefs.getStringSet("selected_apps", HashSet()) ?: HashSet())
+        }
+        
         selectedHidePackages.addAll(prefs.getStringSet("hidden_apps", HashSet()) ?: HashSet())
 
         val layout = LinearLayout(this).apply {
@@ -134,7 +144,7 @@ class MainActivity : AppCompatActivity() {
 
         // --- СПОЙЛЕР 1: Выбор приложений ---
         val toggleShowBtn = TextView(this).apply {
-            text = "▼ Выбрать приложения для Виджета"
+            text = "▼ Выбрать приложения (порядок важен)"
             textSize = 18f
             setTypeface(null, Typeface.BOLD)
             setPadding(0, 40, 0, 10)
@@ -142,7 +152,6 @@ class MainActivity : AppCompatActivity() {
         layout.addView(toggleShowBtn)
 
         listShowApps = ListView(this)
-        // ВАЖНО: Задаем фиксированную высоту, чтобы список прокручивался сам
         listShowApps.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 800) 
         listShowApps.visibility = View.GONE
         layout.addView(listShowApps)
@@ -153,7 +162,7 @@ class MainActivity : AppCompatActivity() {
                 toggleShowBtn.text = "▲ Скрыть список"
             } else {
                 listShowApps.visibility = View.GONE
-                toggleShowBtn.text = "▼ Выбрать приложения для Виджета"
+                toggleShowBtn.text = "▼ Выбрать приложения (порядок важен)"
             }
         }
 
@@ -207,9 +216,14 @@ class MainActivity : AppCompatActivity() {
         }
         listShowApps.setOnItemClickListener { _, _, position, _ ->
             val pkg = allApps[position].pkg
-            if (selectedShowPackages.contains(pkg)) selectedShowPackages.remove(pkg)
-            else selectedShowPackages.add(pkg)
-            prefs.edit().putStringSet("selected_apps", selectedShowPackages).apply()
+            if (selectedShowPackages.contains(pkg)) {
+                selectedShowPackages.remove(pkg)
+            } else {
+                // Добавляем в КОНЕЦ списка
+                selectedShowPackages.add(pkg) 
+            }
+            // Сохраняем как строку через запятую, чтобы сохранить порядок
+            prefs.edit().putString("selected_apps_order", selectedShowPackages.joinToString(",")).apply()
             startForegroundService(Intent(this, FloatingDockService::class.java))
         }
 

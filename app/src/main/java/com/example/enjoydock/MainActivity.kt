@@ -139,8 +139,6 @@ class MainActivity : AppCompatActivity() {
             })
         })
 
-        val listHeight = (resources.displayMetrics.density * 350).toInt()
-
         // --- СПОЙЛЕР 1: Выбор приложений ---
         val toggleShowBtn = TextView(this).apply {
             text = "▼ Выбрать приложения (порядок важен)"
@@ -151,7 +149,8 @@ class MainActivity : AppCompatActivity() {
         layout.addView(toggleShowBtn)
 
         listShowApps = ListView(this)
-        listShowApps.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, listHeight) 
+        // ВОЗВРАЩАЕМ ФИКСИРОВАННУЮ ВЫСОТУ 800, КОТОРАЯ РАБОТАЛА
+        listShowApps.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 800) 
         listShowApps.visibility = View.GONE
         layout.addView(listShowApps)
 
@@ -175,7 +174,7 @@ class MainActivity : AppCompatActivity() {
         layout.addView(toggleHideBtn)
 
         listHideApps = ListView(this)
-        listHideApps.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, listHeight)
+        listHideApps.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 800)
         listHideApps.visibility = View.GONE
         layout.addView(listHideApps)
 
@@ -189,16 +188,8 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // Создаем ScrollView, но отключаем в нем перехват касаний
-        val scrollView = ScrollView(this).apply {
-            isFillViewport = true
-            addView(layout)
-            // ИСПРАВЛЕНИЕ: Отключаем перехват жестов у ScrollView
-            setOnTouchListener { _, _ -> false } 
-        }
-        
-        // Оборачиваем в NestedScrollView для правильной работы
-        setContentView(scrollView)
+        // ВОЗВРАЩАЕМ ОБЫЧНЫЙ SCROLLVIEW
+        setContentView(ScrollView(this).apply { addView(layout) })
         loadApps()
     }
 
@@ -244,7 +235,7 @@ class MainActivity : AppCompatActivity() {
             if (selectedHidePackages.contains(pkg)) selectedHidePackages.remove(pkg)
             else selectedHidePackages.add(pkg)
             prefs.edit().putStringSet("hidden_apps", selectedHidePackages).apply()
-            startForegroundService(Intent(this, FloatingDockService::class.java))
+            startForegroundService(Intent(this@MainActivity, FloatingDockService::class.java))
         }
     }
 }

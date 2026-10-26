@@ -26,7 +26,10 @@ import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 public class FloatingDockService extends Service {
@@ -46,7 +49,6 @@ public class FloatingDockService extends Service {
         @Override
         public void run() {
             checkActiveApp();
-            // Проверяем каждые 250 мс для мгновенной реакции
             handler.postDelayed(this, 250); 
         }
     };
@@ -113,10 +115,22 @@ public class FloatingDockService extends Service {
         dockLayout.setGravity(Gravity.CENTER_VERTICAL);
         dockLayout.setPadding(paddingLR, paddingTB, paddingLR, paddingTB);
 
-        Set<String> selectedApps = prefs.getStringSet("selected_apps", new HashSet<>());
+        // ЧИТАЕМ ПОРЯДОК ИЗ СТРОКИ
+        String savedOrderString = prefs.getString("selected_apps_order", "");
+        List<String> selectedApps;
+        
+        if (savedOrderString.isEmpty()) {
+            // Если пусто (например, при первом запуске), берем из старого формата
+            Set<String> oldSet = prefs.getStringSet("selected_apps", new HashSet<>());
+            selectedApps = new ArrayList<>(oldSet);
+        } else {
+            selectedApps = Arrays.asList(savedOrderString.split(","));
+        }
+
         int iconCount = selectedApps.size();
 
         for (String pkg : selectedApps) {
+            if (pkg.isEmpty()) continue;
             try {
                 ImageView imageView = new ImageView(this);
                 imageView.setImageDrawable(getPackageManager().getApplicationIcon(pkg));
@@ -154,7 +168,6 @@ public class FloatingDockService extends Service {
         
         dockWrapper.setLocked(isLocked);
 
-        // Умный расчет ширины
         int maxWidth = (int) (getResources().getDisplayMetrics().widthPixels * 0.85);
         int calculatedWidth = (iconCount * (iconSize + (iconMargin * 2))) + (paddingLR * 2);
         int finalWidth = Math.min(calculatedWidth, maxWidth);
@@ -215,7 +228,6 @@ public class FloatingDockService extends Service {
             
             if (lastPkg == null) return;
             
-            // Теперь виджет скрывается ТОЛЬКО если приложение добавлено в список скрытых
             Set<String> hiddenApps = prefs.getStringSet("hidden_apps", new HashSet<>());
             boolean shouldHide = hiddenApps.contains(lastPkg);
 

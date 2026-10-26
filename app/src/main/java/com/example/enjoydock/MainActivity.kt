@@ -20,7 +20,6 @@ class MainActivity : AppCompatActivity() {
     private lateinit var listShowApps: ListView
     private lateinit var listHideApps: ListView
     
-    // Используем ArrayList для сохранения порядка (вместо HashSet)
     private val selectedShowPackages = ArrayList<String>()
     private val selectedHidePackages = HashSet<String>()
 
@@ -30,12 +29,10 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         prefs = getSharedPreferences("dock_settings", Context.MODE_PRIVATE)
         
-        // Восстанавливаем порядок из строки
         val savedOrderString = prefs.getString("selected_apps_order", "") ?: ""
         if (savedOrderString.isNotEmpty()) {
             selectedShowPackages.addAll(savedOrderString.split(","))
         } else {
-            // Если это первая версия, берем из старого Set
             selectedShowPackages.addAll(prefs.getStringSet("selected_apps", HashSet()) ?: HashSet())
         }
         
@@ -151,8 +148,11 @@ class MainActivity : AppCompatActivity() {
         }
         layout.addView(toggleShowBtn)
 
+        // Устанавливаем высоту в 400dp, чтобы список помещался на экране
+        val listHeight = (resources.displayMetrics.density * 400).toInt()
+
         listShowApps = ListView(this)
-        listShowApps.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 800) 
+        listShowApps.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, listHeight) 
         listShowApps.visibility = View.GONE
         layout.addView(listShowApps)
 
@@ -176,7 +176,7 @@ class MainActivity : AppCompatActivity() {
         layout.addView(toggleHideBtn)
 
         listHideApps = ListView(this)
-        listHideApps.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, 800)
+        listHideApps.layoutParams = LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, listHeight)
         listHideApps.visibility = View.GONE
         layout.addView(listHideApps)
 
@@ -219,10 +219,8 @@ class MainActivity : AppCompatActivity() {
             if (selectedShowPackages.contains(pkg)) {
                 selectedShowPackages.remove(pkg)
             } else {
-                // Добавляем в КОНЕЦ списка
                 selectedShowPackages.add(pkg) 
             }
-            // Сохраняем как строку через запятую, чтобы сохранить порядок
             prefs.edit().putString("selected_apps_order", selectedShowPackages.joinToString(",")).apply()
             startForegroundService(Intent(this, FloatingDockService::class.java))
         }

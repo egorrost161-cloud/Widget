@@ -14,6 +14,9 @@ public class DockScrollView extends HorizontalScrollView {
     private int startX, startY;
     private boolean isDragging = false;
     private OnDragListener dragListener;
+    
+    // НОВОЕ: Флаг блокировки
+    private boolean isLocked = false;
 
     public DockScrollView(Context context) {
         super(context);
@@ -28,27 +31,32 @@ public class DockScrollView extends HorizontalScrollView {
         this.startY = y;
     }
 
+    // НОВЫЙ МЕТОД: Устанавливаем режим
+    public void setLocked(boolean locked) {
+        this.isLocked = locked;
+    }
+
     @Override
     public boolean onInterceptTouchEvent(MotionEvent ev) {
-        if (dragListener == null) return super.onInterceptTouchEvent(ev); // Если заблокировано
+        // ЕСЛИ ЗАБЛОКИРОВАНО: Мы не перехватываем касания.
+        // Пусть ScrollView сам плавно прокручивает иконки влево-вправо.
+        if (isLocked) {
+            return super.onInterceptTouchEvent(ev);
+        }
 
+        // ЕСЛИ РАЗБЛОКИРОВАНО: Перехватываем любые движения для перетаскивания окна
         switch (ev.getAction()) {
             case MotionEvent.ACTION_DOWN:
                 touchStartX = ev.getRawX();
                 touchStartY = ev.getRawY();
                 isDragging = false;
-                return false; // Даем ScrollView или иконкам получить нажатие
+                return false; // Пропускаем к иконкам
             case MotionEvent.ACTION_MOVE:
                 float dx = ev.getRawX() - touchStartX;
                 float dy = ev.getRawY() - touchStartY;
-
-                // Проверяем, можно ли прокручивать контент
-                boolean canScroll = getChildAt(0) != null && getChildAt(0).getWidth() > getWidth();
-
-                // Перехватываем, если ведем вверх/вниз ИЛИ если нет прокрутки и ведем вбок
-                if (Math.abs(dy) > 20 || (!canScroll && Math.abs(dx) > 20)) {
+                if (Math.abs(dx) > 20 || Math.abs(dy) > 20) {
                     isDragging = true;
-                    return true; // Перехватываем управление для движения окна
+                    return true; // Забираем событие себе (начинаем перетаскивание)
                 }
                 break;
         }
@@ -57,6 +65,12 @@ public class DockScrollView extends HorizontalScrollView {
 
     @Override
     public boolean onTouchEvent(MotionEvent ev) {
+        // Если заблокировано — работает обычная прокрутка
+        if (isLocked) {
+            return super.onTouchEvent(ev);
+        }
+
+        // Если разблокировано — работает перетаскивание окна
         if (isDragging) {
             switch (ev.getAction()) {
                 case MotionEvent.ACTION_MOVE:

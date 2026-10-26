@@ -27,19 +27,17 @@ class MainActivity : AppCompatActivity() {
 
     data class AppInfo(val name: String, val pkg: String)
 
-    // Лончер для выбора картинки из галереи
     private val pickImageLauncher = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == Activity.RESULT_OK) {
             val uri: Uri? = result.data?.data
             if (uri != null) {
-                // Сохраняем разрешение на доступ к файлу, чтобы после перезагрузки фон не пропал
                 try {
                     contentResolver.takePersistableUriPermission(uri, Intent.FLAG_GRANT_READ_URI_PERMISSION)
                 } catch (e: Exception) {}
                 
                 prefs.edit().putString("bg_image_uri", uri.toString()).apply()
-                startForegroundService(Intent(this, FloatingDockService::class.java))
-                Toast.makeText(this, "Фон обновлён!", Toast.LENGTH_SHORT).show()
+                startForegroundService(Intent(this@MainActivity, FloatingDockService::class.java))
+                Toast.makeText(this@MainActivity, "Фон обновлён!", Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -95,7 +93,6 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        // --- НАСТРОЙКА ФОНА ---
         layout.addView(TextView(this).apply {
             text = "\nФон виджета:"
             textSize = 18f
@@ -103,7 +100,7 @@ class MainActivity : AppCompatActivity() {
             setPadding(0, 20, 0, 10)
         })
 
-        val btnPickImage = Button(this).apply {
+        layout.addView(Button(this).apply {
             text = "Выбрать картинку (обои)"
             setOnClickListener {
                 val intent = Intent(Intent.ACTION_OPEN_DOCUMENT).apply {
@@ -112,19 +109,17 @@ class MainActivity : AppCompatActivity() {
                 }
                 pickImageLauncher.launch(intent)
             }
-        }
-        layout.addView(btnPickImage)
+        })
 
         layout.addView(Button(this).apply {
             text = "Сбросить фон (вернуть цвет)"
             setOnClickListener {
                 prefs.edit().remove("bg_image_uri").apply()
                 startForegroundService(Intent(this@MainActivity, FloatingDockService::class.java))
-                Toast.makeText(this, "Фон сброшен", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this@MainActivity, "Фон сброшен", Toast.LENGTH_SHORT).show()
             }
         })
 
-        // --- ГАЛОЧКА БЛОКИРОВКИ ---
         layout.addView(CheckBox(this).apply {
             text = "Заблокировать перемещение виджета"
             textSize = 16f
@@ -136,7 +131,6 @@ class MainActivity : AppCompatActivity() {
             }
         })
 
-        // --- ПРОЗРАЧНОСТЬ ---
         val transparencyLabel = TextView(this).apply {
             text = "Прозрачность: ${prefs.getInt("dock_transparency", 80)} %"
             textSize = 16f
@@ -159,7 +153,6 @@ class MainActivity : AppCompatActivity() {
             })
         })
 
-        // --- РАЗМЕР ---
         val sizeLabel = TextView(this).apply {
             text = "Размер: ${prefs.getInt("dock_size", 100)} %"
             textSize = 16f
@@ -183,7 +176,6 @@ class MainActivity : AppCompatActivity() {
             })
         })
 
-        // --- СПОЙЛЕР 1: Выбор приложений для показа ---
         val toggleShowBtn = TextView(this).apply {
             text = "▼ Выбрать приложения для Виджета"
             textSize = 18f
@@ -208,7 +200,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // --- СПОЙЛЕР 2: Выбор приложений для скрытия ---
         val toggleHideBtn = TextView(this).apply {
             text = "▼ Скрывать виджет на этих приложениях"
             textSize = 18f
@@ -250,7 +241,6 @@ class MainActivity : AppCompatActivity() {
         allApps.sortBy { it.name.lowercase() }
         val names = allApps.map { it.name }
 
-        // Настройка списка ДЛЯ ПОКАЗА
         val adapterShow = ArrayAdapter(this, android.R.layout.simple_list_item_multiple_choice, names)
         listShowApps.adapter = adapterShow
         listShowApps.choiceMode = ListView.CHOICE_MODE_MULTIPLE
@@ -265,7 +255,6 @@ class MainActivity : AppCompatActivity() {
             startForegroundService(Intent(this, FloatingDockService::class.java))
         }
 
-        // Настройка списка ДЛЯ СКРЫТИЯ
         val adapterHide = ArrayAdapter(this, android.R.layout.simple_list_item_multiple_choice, names)
         listHideApps.adapter = adapterHide
         listHideApps.choiceMode = ListView.CHOICE_MODE_MULTIPLE

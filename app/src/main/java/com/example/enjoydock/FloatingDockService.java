@@ -5,6 +5,8 @@ import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.Service;
+import android.app.usage.UsageEvents;
+import android.app.usage.UsageStatsManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -13,11 +15,16 @@ import android.graphics.Color;
 import android.graphics.PixelFormat;
 import android.graphics.drawable.GradientDrawable;
 import android.os.Build;
+import android.os.Handler;
 import android.os.IBinder;
+import android.os.Looper;
 import android.view.Gravity;
+import android.view.View;
 import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import java.util.HashSet;
+import java.util.Set;
 
 public class FloatingDockService extends Service {
 
@@ -25,13 +32,30 @@ public class FloatingDockService extends Service {
     private DockScrollView dockWrapper;
     private WindowManager.LayoutParams params;
     private SharedPreferences prefs;
+    private UsageStatsManager usageStatsManager;
+    
+    private final Handler handler = new Handler(Looper.getMainLooper());
+    private boolean isCurrentlyHidden = false;
+
+    // Задача для проверки активного приложения каждую секунду
+    private final Runnable visibilityTask = new Runnable() {
+        @Override
+        public void run() {
+            checkActiveApp();
+            handler.postDelayed(this, 1000); // 1 секунда
+        }
+    };
 
     @Override
     public void onCreate() {
         super.onCreate();
         windowManager = (WindowManager) getSystemService(WINDOW_SERVICE);
+        usageStatsManager = (UsageStatsManager) getSystemService(Context.USAGE_STATS_SERVICE);
         prefs = getSharedPreferences("dock_settings", Context.MODE_PRIVATE);
         createDock();
+        
+        // Запускаем отслеживание
+        handler.post(visibilityTask);
     }
 
     @Override
@@ -86,7 +110,7 @@ public class FloatingDockService extends Service {
         dockLayout.setGravity(Gravity.CENTER_VERTICAL);
         dockLayout.setPadding(paddingLR, paddingTB, paddingLR, paddingTB);
 
-        for (String pkg : prefs.getStringSet("selected_apps", new java.util.HashSet<>())) {
+        for (String pkg : prefs.getStringSet("selected_apps", new HashSet<>())) {
             try {
                 ImageView imageView = new ImageView(this);
                 imageView.setImageDrawable(getPackageManager().getApplicationIcon(pkg));
@@ -114,8 +138,6 @@ public class FloatingDockService extends Service {
         bg.setCornerRadius(cornerRadius);
         dockWrapper.setBackground(bg);
         dockWrapper.setClipToOutline(true);
-
-        // === ПЕРЕДАЕМ РЕЖИМ БЛОКИРОВКИ В КЛАСС ===
         dockWrapper.setLocked(isLocked);
 
         int maxWidth = (int) (getResources().getDisplayMetrics().widthPixels * 0.85);
@@ -134,10 +156,8 @@ public class FloatingDockService extends Service {
         params.x = prefs.getInt("dock_x", 50);
         params.y = prefs.getInt("dock_y", 400);
 
-        // Привязываем перетаскивание ТОЛЬКО если НЕ заблокировано
         if (!isLocked) {
             dockWrapper.setStartPosition(params.x, params.y);
-
             dockWrapper.setDragListener(new DockScrollView.OnDragListener() {
                 @Override
                 public void onDrag(int x, int y) {
@@ -145,13 +165,9 @@ public class FloatingDockService extends Service {
                     params.y = y;
                     windowManager.updateViewLayout(dockWrapper, params);
                 }
-
                 @Override
                 public void onDragEnd() {
-                    prefs.edit()
-                            .putInt("dock_x", params.x)
-                            .putInt("dock_y", params.y)
-                            .apply();
+                    prefs.edit().putInt("dock_x", params.x).putInt("dock_y", params.y).apply();
                 }
             });
         }
@@ -159,9 +175,41 @@ public class FloatingDockService extends Service {
         windowManager.addView(dockWrapper, params);
     }
 
+    // === НОВОЕ: Проверка активного приложения ===
+    private void checkActiveApp() {
+        if (usageStatsManager == null || dockWrapper == null) return;
+        try {
+            long time = System.currentTimeMillis();
+            UsageEvents events = usageStatsManager.queryEvents(time - 10000, time);
+            String lastPkg = null;
+            UsageEvents.Event event = new UsageEvents.Event();
+            
+            while (events.hasNextEvent()) {
+                events.getNextEvent(event);
+                if (event.getEventType() == UsageEvents.Event.MOVE_TO_FOREGROUND) {
+                    lastPkg = event.getPackageName();
+                }
+            }
+            
+            if (lastPkg == null) return;
+            
+            Set<String> hiddenApps = prefs.getStringSet("hidden_apps", new HashSet<>());
+            boolean shouldHide = hiddenApps.contains(lastPkg);
+
+            if (shouldHide && !isCurrentlyHidden) {
+                dockWrapper.setVisibility(View.GONE);
+                isCurrentlyHidden = true;
+            } else if (!shouldHide && isCurrentlyHidden) {
+                dockWrapper.setVisibility(View.VISIBLE);
+                isCurrentlyHidden = false;
+            }
+        } catch (Exception ignored) {}
+    }
+
     @Override
     public void onDestroy() {
         super.onDestroy();
+        handler.removeCallbacks(visibilityTask);
         if (dockWrapper != null) windowManager.removeView(dockWrapper);
     }
 

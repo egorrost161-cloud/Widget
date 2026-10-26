@@ -26,8 +26,6 @@ public class FloatingDockService extends Service {
     private WindowManager.LayoutParams params;
     private SharedPreferences prefs;
 
-    private int startWindowX, startWindowY;
-
     @Override
     public void onCreate() {
         super.onCreate();
@@ -117,8 +115,12 @@ public class FloatingDockService extends Service {
         dockWrapper.setHorizontalScrollBarEnabled(false);
         dockWrapper.addView(dockLayout);
 
+        // ВАЖНО: Задаем фиксированную ширину окна (85% экрана).
+        // Без этого HorizontalScrollView не поймет, что контент не влезает, и не будет листать!
+        int maxWidth = (int) (getResources().getDisplayMetrics().widthPixels * 0.85);
+
         params = new WindowManager.LayoutParams(
-                WindowManager.LayoutParams.WRAP_CONTENT,
+                maxWidth, 
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.O
                         ? WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
@@ -131,23 +133,15 @@ public class FloatingDockService extends Service {
         params.x = prefs.getInt("dock_x", 50);
         params.y = prefs.getInt("dock_y", 400);
 
-        // Ограничиваем ширину виджета 85% от экрана, чтобы он не улетал за края
-        int maxWidth = (int) (getResources().getDisplayMetrics().widthPixels * 0.85);
-        params.width = maxWidth;
-
-        // --- УМНОЕ ПЕРЕТАСКИВАНИЕ ---
+        // Подключаем перетаскивание
         if (!isLocked) {
+            dockWrapper.setStartPosition(params.x, params.y);
+
             dockWrapper.setDragListener(new DockScrollView.OnDragListener() {
                 @Override
-                public void onDragStart() {
-                    startWindowX = params.x;
-                    startWindowY = params.y;
-                }
-
-                @Override
-                public void onDrag(float dx, float dy) {
-                    params.x = startWindowX + (int) dx;
-                    params.y = startWindowY + (int) dy;
+                public void onDrag(int x, int y) {
+                    params.x = x;
+                    params.y = y;
                     windowManager.updateViewLayout(dockWrapper, params);
                 }
 

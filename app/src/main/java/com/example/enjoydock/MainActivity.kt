@@ -4,15 +4,12 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
-import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.Gravity
-import android.view.LayoutInflater
 import android.view.View
-import android.view.ViewGroup
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.NestedScrollView
@@ -27,7 +24,7 @@ class MainActivity : AppCompatActivity() {
     private val selectedShowPackages = ArrayList<String>()
     private val selectedHidePackages = HashSet<String>()
 
-    data class AppInfo(val name: String, val pkg: String, val icon: Drawable?)
+    data class AppInfo(val name: String, val pkg: String)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -212,20 +209,13 @@ class MainActivity : AppCompatActivity() {
         for (info in resolveInfos) {
             val pkg = info.activityInfo.packageName
             if (pkg != this.packageName) {
-                try {
-                    val name = info.loadLabel(pm).toString()
-                    val icon = info.loadIcon(pm)
-                    allApps.add(AppInfo(name, pkg, icon))
-                } catch (e: Exception) {}
+                allApps.add(AppInfo(info.loadLabel(pm).toString(), pkg))
             }
         }
-        
         allApps.sortBy { it.name.lowercase() }
-        updateAdapters()
-    }
+        val names = allApps.map { it.name }
 
-    private fun updateAdapters() {
-        val adapterShow = AppAdapter(this, allApps)
+        val adapterShow = ArrayAdapter(this, android.R.layout.simple_list_item_multiple_choice, names)
         listShowApps.adapter = adapterShow
         listShowApps.choiceMode = ListView.CHOICE_MODE_MULTIPLE
         for (i in allApps.indices) {
@@ -242,7 +232,7 @@ class MainActivity : AppCompatActivity() {
             startForegroundService(Intent(this, FloatingDockService::class.java))
         }
 
-        val adapterHide = AppAdapter(this, allApps)
+        val adapterHide = ArrayAdapter(this, android.R.layout.simple_list_item_multiple_choice, names)
         listHideApps.adapter = adapterHide
         listHideApps.choiceMode = ListView.CHOICE_MODE_MULTIPLE
         for (i in allApps.indices) {
@@ -255,32 +245,5 @@ class MainActivity : AppCompatActivity() {
             prefs.edit().putStringSet("hidden_apps", selectedHidePackages).apply()
             startForegroundService(Intent(this@MainActivity, FloatingDockService::class.java))
         }
-    }
-}
-
-class AppAdapter(
-    private val context: Context,
-    private val apps: List<MainActivity.AppInfo>
-) : ArrayAdapter<MainActivity.AppInfo>(context, 0, apps) {
-
-    private val inflater = LayoutInflater.from(context)
-
-    override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-        val view = convertView ?: inflater.inflate(android.R.layout.simple_list_item_multiple_choice, parent, false)
-        
-        val textView = view.findViewById<TextView>(android.R.id.text1)
-        val appInfo = apps[position]
-
-        textView.text = appInfo.name
-        textView.textSize = 16f
-        
-        if (appInfo.icon != null) {
-            val iconSize = (context.resources.displayMetrics.density * 32).toInt()
-            appInfo.icon.setBounds(0, 0, iconSize, iconSize)
-            textView.setCompoundDrawables(appInfo.icon, null, null, null)
-            textView.compoundDrawablePadding = (context.resources.displayMetrics.density * 16).toInt()
-        }
-
-        return view
     }
 }

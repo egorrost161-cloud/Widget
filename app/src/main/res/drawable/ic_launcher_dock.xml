@@ -5,24 +5,33 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     
-    <!-- Темный фон панели -->
+    <!-- Внешний темный скругленный квадрат (фон иконки) -->
     <path
-        android:fillColor="#121212"
+        android:fillColor="#1A1A1A"
         android:pathData="M20,20 h68 a15,15 0 0 1 15,15 v38 a15,15 0 0 1 -15,15 h-68 a15,15 0 0 1 -15,-15 v-38 a15,15 0 0 1 15,-15 z" />
 
-    <!-- Розовый квадрат -->
+    <!-- Внутренняя темная "капсула" -->
     <path
-        android:fillColor="#F4527E"
-        android:pathData="M28,30 C28,26 31,23 35,23 L46,23 C50,23 53,26 53,30 L53,41 C53,45 50,48 46,48 L35,48 C31,48 28,45 28,41 Z" />
+        android:fillColor="#333333"
+        android:pathData="M35,35 h38 a10,10 0 0 1 10,10 v18 a10,10 0 0 1 -10,10 h-38 a10,10 0 0 1 -10,-10 v-18 a10,10 0 0 1 10,-10 z" />
 
-    <!-- Зеленый квадрат -->
+    <!-- Левая белая кнопка (овал) с темной точкой внутри -->
     <path
-        android:fillColor="#17B897"
-        android:pathData="M56,30 C56,26 59,23 63,23 L74,23 C78,23 81,26 81,30 L81,41 C81,45 78,48 74,48 L63,48 C59,48 56,45 56,41 Z" />
-
-    <!-- Желтый прямоугольник -->
+        android:fillColor="#FFFFFF"
+        android:pathData="M32,44 h14 a5,5 0 0 1 5,5 v10 a5,5 0 0 1 -5,5 h-14 a5,5 0 0 1 -5,-5 v-10 a5,5 0 0 1 5,-5 z" />
     <path
-        android:fillColor="#F4C11E"
-        android:pathData="M28,55 C28,52 31,50 34,50 L76,50 C79,50 81,52 81,55 L81,74 C81,77 79,79 76,79 L34,79 C31,79 28,77 28,74 Z" />
+        android:fillColor="#555555"
+        android:pathData="M34,49 h10 v10 h-10 z" />
 
+    <!-- Правая белая кнопка (круг) с темным символом G внутри -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M58,46 A10,10 0 1 1 58,66 A10,10 0 1 1 58,46 Z" />
+    <path
+        android:fillColor="#333333"
+        android:pathData="M55,52 A4,4 0 1 1 55,60 A4,4 0 1 1 55,52 Z" />
+    <path
+        android:strokeColor="#333333"
+        android:strokeWidth="2"
+        android:pathData="M61,56 L58,56" />
 </vector>

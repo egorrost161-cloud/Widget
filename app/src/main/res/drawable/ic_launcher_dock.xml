@@ -4,19 +4,25 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
+    
+    <!-- Черный фон (форма "squircle") -->
     <path
-        android:fillColor="#222222"
-        android:pathData="M20,20 h68 a15,15 0 0 1 15,15 v38 a15,15 0 0 1 -15,15 h-68 a15,15 0 0 1 -15,-15 v-38 a15,15 0 0 1 15,-15 z" />
+        android:fillColor="#121212"
+        android:pathData="M54,10 C75,10 98,33 98,54 C98,75 75,98 54,98 C33,98 10,75 10,54 C10,33 33,10 54,10 Z" />
+
+    <!-- Розовый квадрат (левый верхний) -->
     <path
-        android:fillColor="#64B5F6"
-        android:pathData="M32,42 h14 v14 h-14 z" />
+        android:fillColor="#F4527E"
+        android:pathData="M28,30 C28,25 32,22 36,22 L46,22 C50,22 54,25 54,30 L54,42 C54,47 50,50 46,50 L36,50 C32,50 28,47 28,42 Z" />
+
+    <!-- Зеленый квадрат (правый верхний) -->
     <path
-        android:fillColor="#81C784"
-        android:pathData="M52,42 h14 v14 h-14 z" />
+        android:fillColor="#17B897"
+        android:pathData="M56,30 C56,25 60,22 64,22 L74,22 C78,22 82,25 82,30 L82,42 C82,47 78,50 74,50 L64,50 C60,50 56,47 56,42 Z" />
+
+    <!-- Желтый прямоугольник (нижний) -->
     <path
-        android:fillColor="#FFD54F"
-        android:pathData="M72,42 h14 v14 h-14 z" />
-    <path
-        android:fillColor="#9E9E9E"
-        android:pathData="M34,68 h40 v4 h-40 z" />
+        android:fillColor="#F4C11E"
+        android:pathData="M28,58 C28,54 31,52 34,52 L76,52 C80,52 82,54 82,58 L82,76 C82,80 79,82 76,82 L34,82 C30,82 28,80 28,76 Z" />
+
 </vector>

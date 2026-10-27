@@ -145,7 +145,6 @@ class MainActivity : AppCompatActivity() {
 
         val listHeight = (resources.displayMetrics.density * 350).toInt()
 
-        // --- СПОЙЛЕР 1: Выбор приложений ---
         val toggleShowBtn = TextView(this).apply {
             text = "▼ Выбрать приложения (порядок важен)"
             textSize = 18f
@@ -170,7 +169,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // --- СПОЙЛЕР 2: Скрытие виджета ---
         val toggleHideBtn = TextView(this).apply {
             text = "▼ Скрывать виджет на этих приложениях"
             textSize = 18f
@@ -207,38 +205,32 @@ class MainActivity : AppCompatActivity() {
     private fun loadApps() {
         val pm = packageManager
         
-        // Получаем ВСЕ установленные приложения (включая системные)
-        val installedApps = pm.getInstalledApplications(0)
+        // Быстрая загрузка (только программы из меню)
+        val intent = Intent(Intent.ACTION_MAIN, null).addCategory(Intent.CATEGORY_LAUNCHER)
+        val resolveInfos = pm.queryIntentActivities(intent, 0)
 
-        for (appInfo in installedApps) {
-            val pkg = appInfo.packageName
-            
-            // Пропускаем наше приложение
-            if (pkg == this.packageName) continue
-            
-            // Пропускаем приложения без лаунчера и без иконки
-            val launchIntent = pm.getLaunchIntentForPackage(pkg)
-            val hasIcon = appInfo.icon != 0
-            if (launchIntent == null && !hasIcon) continue
-
-            try {
-                val name = pm.getApplicationLabel(appInfo).toString()
-                val icon = pm.getApplicationIcon(appInfo) // ДОБАВИЛИ ПОЛУЧЕНИЕ ИКОНКИ
-                allApps.add(AppInfo(name, pkg, icon))
-            } catch (e: Exception) {}
+        for (info in resolveInfos) {
+            val pkg = info.activityInfo.packageName
+            if (pkg != this.packageName) {
+                try {
+                    val name = info.loadLabel(pm).toString()
+                    val icon = info.loadIcon(pm)
+                    allApps.add(AppInfo(name, pkg, icon))
+                } catch (e: Exception) {}
+            }
         }
         
         allApps.sortBy { it.name.lowercase() }
+        updateAdapters()
+    }
 
-        // Используем наш кастомный адаптер для списка ПОКАЗА
+    private fun updateAdapters() {
         val adapterShow = AppAdapter(this, allApps)
         listShowApps.adapter = adapterShow
         listShowApps.choiceMode = ListView.CHOICE_MODE_MULTIPLE
-        
         for (i in allApps.indices) {
             if (selectedShowPackages.contains(allApps[i].pkg)) listShowApps.setItemChecked(i, true)
         }
-        
         listShowApps.setOnItemClickListener { _, _, position, _ ->
             val pkg = allApps[position].pkg
             if (selectedShowPackages.contains(pkg)) {
@@ -250,26 +242,22 @@ class MainActivity : AppCompatActivity() {
             startForegroundService(Intent(this, FloatingDockService::class.java))
         }
 
-        // Используем наш кастомный адаптер для списка СКРЫТИЯ
         val adapterHide = AppAdapter(this, allApps)
         listHideApps.adapter = adapterHide
         listHideApps.choiceMode = ListView.CHOICE_MODE_MULTIPLE
-        
         for (i in allApps.indices) {
             if (selectedHidePackages.contains(allApps[i].pkg)) listHideApps.setItemChecked(i, true)
         }
-        
         listHideApps.setOnItemClickListener { _, _, position, _ ->
             val pkg = allApps[position].pkg
             if (selectedHidePackages.contains(pkg)) selectedHidePackages.remove(pkg)
             else selectedHidePackages.add(pkg)
             prefs.edit().putStringSet("hidden_apps", selectedHidePackages).apply()
-            startForegroundService(Intent(this, FloatingDockService::class.java))
+            startForegroundService(Intent(this@MainActivity, FloatingDockService::class.java))
         }
     }
 }
 
-// --- КАСТОМНЫЙ АДАПТЕР ДЛЯ ОТОБРАЖЕНИЯ ИКОНОК В СПИСКЕ ---
 class AppAdapter(
     private val context: Context,
     private val apps: List<MainActivity.AppInfo>
@@ -286,12 +274,11 @@ class AppAdapter(
         textView.text = appInfo.name
         textView.textSize = 16f
         
-        // Добавляем иконку слева от текста
         if (appInfo.icon != null) {
-            val iconSize = (context.resources.displayMetrics.density * 32).toInt() // Размер иконки 32dp
+            val iconSize = (context.resources.displayMetrics.density * 32).toInt()
             appInfo.icon.setBounds(0, 0, iconSize, iconSize)
             textView.setCompoundDrawables(appInfo.icon, null, null, null)
-            textView.compoundDrawablePadding = (context.resources.displayMetrics.density * 16).toInt() // Отступ
+            textView.compoundDrawablePadding = (context.resources.displayMetrics.density * 16).toInt()
         }
 
         return view

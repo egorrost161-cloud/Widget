@@ -4,12 +4,15 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.graphics.Typeface
+import android.graphics.drawable.Drawable
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
 import android.view.Gravity
+import android.view.LayoutInflater
 import android.view.View
+import android.view.ViewGroup
 import android.widget.*
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.widget.NestedScrollView
@@ -24,7 +27,7 @@ class MainActivity : AppCompatActivity() {
     private val selectedShowPackages = ArrayList<String>()
     private val selectedHidePackages = HashSet<String>()
 
-    data class AppInfo(val name: String, val pkg: String)
+    data class AppInfo(val name: String, val pkg: String, val icon: Drawable?)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -213,31 +216,29 @@ class MainActivity : AppCompatActivity() {
             // Пропускаем наше приложение
             if (pkg == this.packageName) continue
             
-            // Пропускаем приложения, которые нельзя запустить (нет Activity для запуска)
-            // Но оставляем системные, у которых есть иконка
+            // Пропускаем приложения без лаунчера и без иконки
             val launchIntent = pm.getLaunchIntentForPackage(pkg)
             val hasIcon = appInfo.icon != 0
-            
-            // Если это системное приложение без иконки и без лаунчера - пропускаем
             if (launchIntent == null && !hasIcon) continue
 
             try {
                 val name = pm.getApplicationLabel(appInfo).toString()
-                allApps.add(AppInfo(name, pkg))
-            } catch (e: Exception) {
-                // Игнорируем ошибки (например, если у пакета нет названия)
-            }
+                val icon = pm.getApplicationIcon(appInfo) // ДОБАВИЛИ ПОЛУЧЕНИЕ ИКОНКИ
+                allApps.add(AppInfo(name, pkg, icon))
+            } catch (e: Exception) {}
         }
         
         allApps.sortBy { it.name.lowercase() }
-        val names = allApps.map { it.name }
 
-        val adapterShow = ArrayAdapter(this, android.R.layout.simple_list_item_multiple_choice, names)
+        // Используем наш кастомный адаптер для списка ПОКАЗА
+        val adapterShow = AppAdapter(this, allApps)
         listShowApps.adapter = adapterShow
         listShowApps.choiceMode = ListView.CHOICE_MODE_MULTIPLE
+        
         for (i in allApps.indices) {
             if (selectedShowPackages.contains(allApps[i].pkg)) listShowApps.setItemChecked(i, true)
         }
+        
         listShowApps.setOnItemClickListener { _, _, position, _ ->
             val pkg = allApps[position].pkg
             if (selectedShowPackages.contains(pkg)) {
@@ -249,18 +250,50 @@ class MainActivity : AppCompatActivity() {
             startForegroundService(Intent(this, FloatingDockService::class.java))
         }
 
-        val adapterHide = ArrayAdapter(this, android.R.layout.simple_list_item_multiple_choice, names)
+        // Используем наш кастомный адаптер для списка СКРЫТИЯ
+        val adapterHide = AppAdapter(this, allApps)
         listHideApps.adapter = adapterHide
         listHideApps.choiceMode = ListView.CHOICE_MODE_MULTIPLE
+        
         for (i in allApps.indices) {
             if (selectedHidePackages.contains(allApps[i].pkg)) listHideApps.setItemChecked(i, true)
         }
+        
         listHideApps.setOnItemClickListener { _, _, position, _ ->
             val pkg = allApps[position].pkg
             if (selectedHidePackages.contains(pkg)) selectedHidePackages.remove(pkg)
             else selectedHidePackages.add(pkg)
             prefs.edit().putStringSet("hidden_apps", selectedHidePackages).apply()
-            startForegroundService(Intent(this@MainActivity, FloatingDockService::class.java))
+            startForegroundService(Intent(this, FloatingDockService::class.java))
         }
+    }
+}
+
+// --- КАСТОМНЫЙ АДАПТЕР ДЛЯ ОТОБРАЖЕНИЯ ИКОНОК В СПИСКЕ ---
+class AppAdapter(
+    private val context: Context,
+    private val apps: List<MainActivity.AppInfo>
+) : ArrayAdapter<MainActivity.AppInfo>(context, 0, apps) {
+
+    private val inflater = LayoutInflater.from(context)
+
+    override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
+        val view = convertView ?: inflater.inflate(android.R.layout.simple_list_item_multiple_choice, parent, false)
+        
+        val textView = view.findViewById<TextView>(android.R.id.text1)
+        val appInfo = apps[position]
+
+        textView.text = appInfo.name
+        textView.textSize = 16f
+        
+        // Добавляем иконку слева от текста
+        if (appInfo.icon != null) {
+            val iconSize = (context.resources.displayMetrics.density * 32).toInt() // Размер иконки 32dp
+            appInfo.icon.setBounds(0, 0, iconSize, iconSize)
+            textView.setCompoundDrawables(appInfo.icon, null, null, null)
+            textView.compoundDrawablePadding = (context.resources.displayMetrics.density * 16).toInt() // Отступ
+        }
+
+        return view
     }
 }

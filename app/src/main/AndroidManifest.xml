@@ -2,24 +2,31 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- Разрешения для плавающего окна и фоновой работы -->
     <uses-permission android:name="android.permission.SYSTEM_ALERT_WINDOW" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_SPECIAL_USE" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+    
+    <!-- Разрешения для автозапуска -->
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
+    
+    <!-- Разрешение для отслеживания активных приложений (для скрытия виджета) -->
     <uses-permission android:name="android.permission.PACKAGE_USAGE_STATS" tools:ignore="ProtectedPermissions" />
     
+    <!-- Разрешение для получения списка всех приложений (включая системные) -->
     <uses-permission android:name="android.permission.QUERY_ALL_PACKAGES" 
         tools:ignore="QueryAllPackagesPermission" />
 
     <application
         android:allowBackup="true"
-        android:icon="@drawable/ic_launcher_dock"
-        android:roundIcon="@drawable/ic_launcher_dock"
+        android:icon="@mipmap/ic_launcher"
+        android:roundIcon="@mipmap/ic_launcher"
         android:label="Виджет" 
         android:supportsRtl="true"
         android:theme="@style/Theme.AppCompat.Light.NoActionBar">
 
+        <!-- Главный экран настроек -->
         <activity
             android:name=".MainActivity"
             android:exported="true">
@@ -29,6 +36,7 @@
             </intent-filter>
         </activity>
 
+        <!-- Служба плавающего виджета -->
         <service
             android:name=".FloatingDockService"
             android:enabled="true"
@@ -37,7 +45,7 @@
             <property android:name="android.app.PROPERTY_SPECIAL_USE_FGS_SUBTYPE" android:value="overlay" />
         </service>
 
-        <!-- НОВОЕ: Автозапуск при загрузке -->
+        <!-- Получатель сигнала загрузки для автозапуска -->
         <receiver
             android:name=".BootReceiver"
             android:enabled="true"

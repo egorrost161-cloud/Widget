@@ -145,6 +145,7 @@ class MainActivity : AppCompatActivity() {
 
         val listHeight = (resources.displayMetrics.density * 350).toInt()
 
+        // --- СПОЙЛЕР 1: Выбор приложений ---
         val toggleShowBtn = TextView(this).apply {
             text = "▼ Выбрать приложения (порядок важен)"
             textSize = 18f
@@ -169,6 +170,7 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
+        // --- СПОЙЛЕР 2: Скрытие виджета ---
         val toggleHideBtn = TextView(this).apply {
             text = "▼ Скрывать виджет на этих приложениях"
             textSize = 18f
@@ -205,6 +207,7 @@ class MainActivity : AppCompatActivity() {
     private fun loadApps() {
         val pm = packageManager
         
+        // 1. Мгновенно грузим обычные приложения
         val intent = Intent(Intent.ACTION_MAIN, null).addCategory(Intent.CATEGORY_LAUNCHER)
         val resolveInfos = pm.queryIntentActivities(intent, 0)
 
@@ -218,9 +221,35 @@ class MainActivity : AppCompatActivity() {
                 } catch (e: Exception) {}
             }
         }
-        
         allApps.sortBy { it.name.lowercase() }
         updateAdapters()
+
+        // 2. В фоне догружаем системные приложения
+        Thread {
+            val installedApps = pm.getInstalledApplications(0)
+            val systemApps = ArrayList<AppInfo>()
+
+            for (appInfo in installedApps) {
+                val pkg = appInfo.packageName
+                if (pkg == this.packageName || allApps.any { it.pkg == pkg }) continue
+                
+                val launchIntent = pm.getLaunchIntentForPackage(pkg)
+                val hasIcon = appInfo.icon != 0
+                if (launchIntent == null && !hasIcon) continue
+
+                try {
+                    val name = pm.getApplicationLabel(appInfo).toString()
+                    val icon = pm.getApplicationIcon(appInfo)
+                    systemApps.add(AppInfo(name, pkg, icon))
+                } catch (e: Exception) {}
+            }
+
+            runOnUiThread {
+                allApps.addAll(systemApps)
+                allApps.sortBy { it.name.lowercase() }
+                updateAdapters()
+            }
+        }.start()
     }
 
     private fun updateAdapters() {

@@ -140,7 +140,6 @@ class MainActivity : AppCompatActivity() {
             })
         })
 
-        // Фиксированная высота 350dp для списков
         val listHeight = (resources.displayMetrics.density * 350).toInt()
 
         // --- СПОЙЛЕР 1: Выбор приложений ---
@@ -193,7 +192,6 @@ class MainActivity : AppCompatActivity() {
             }
         }
 
-        // NestedScrollView для правильной работы жестов
         val scrollView = NestedScrollView(this).apply {
             addView(layout)
             isFillViewport = true
@@ -205,15 +203,32 @@ class MainActivity : AppCompatActivity() {
 
     private fun loadApps() {
         val pm = packageManager
-        val intent = Intent(Intent.ACTION_MAIN, null).addCategory(Intent.CATEGORY_LAUNCHER)
-        val resolveInfos = pm.queryIntentActivities(intent, 0)
+        
+        // Получаем ВСЕ установленные приложения (включая системные)
+        val installedApps = pm.getInstalledApplications(0)
 
-        for (info in resolveInfos) {
-            val pkg = info.activityInfo.packageName
-            if (pkg != this.packageName) {
-                allApps.add(AppInfo(info.loadLabel(pm).toString(), pkg))
+        for (appInfo in installedApps) {
+            val pkg = appInfo.packageName
+            
+            // Пропускаем наше приложение
+            if (pkg == this.packageName) continue
+            
+            // Пропускаем приложения, которые нельзя запустить (нет Activity для запуска)
+            // Но оставляем системные, у которых есть иконка
+            val launchIntent = pm.getLaunchIntentForPackage(pkg)
+            val hasIcon = appInfo.icon != 0
+            
+            // Если это системное приложение без иконки и без лаунчера - пропускаем
+            if (launchIntent == null && !hasIcon) continue
+
+            try {
+                val name = pm.getApplicationLabel(appInfo).toString()
+                allApps.add(AppInfo(name, pkg))
+            } catch (e: Exception) {
+                // Игнорируем ошибки (например, если у пакета нет названия)
             }
         }
+        
         allApps.sortBy { it.name.lowercase() }
         val names = allApps.map { it.name }
 
@@ -245,7 +260,7 @@ class MainActivity : AppCompatActivity() {
             if (selectedHidePackages.contains(pkg)) selectedHidePackages.remove(pkg)
             else selectedHidePackages.add(pkg)
             prefs.edit().putStringSet("hidden_apps", selectedHidePackages).apply()
-            startForegroundService(Intent(this, FloatingDockService::class.java))
+            startForegroundService(Intent(this@MainActivity, FloatingDockService::class.java))
         }
     }
 }

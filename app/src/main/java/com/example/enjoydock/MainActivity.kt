@@ -202,7 +202,7 @@ class MainActivity : AppCompatActivity() {
     private fun loadApps() {
         val pm = packageManager
         
-        // Быстрая загрузка (только программы из меню)
+        // Быстрая загрузка
         val intent = Intent(Intent.ACTION_MAIN, null).addCategory(Intent.CATEGORY_LAUNCHER)
         val resolveInfos = pm.queryIntentActivities(intent, 0)
 

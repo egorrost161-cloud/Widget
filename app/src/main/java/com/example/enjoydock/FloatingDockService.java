@@ -115,12 +115,10 @@ public class FloatingDockService extends Service {
         dockLayout.setGravity(Gravity.CENTER_VERTICAL);
         dockLayout.setPadding(paddingLR, paddingTB, paddingLR, paddingTB);
 
-        // ЧИТАЕМ ПОРЯДОК ИЗ СТРОКИ
         String savedOrderString = prefs.getString("selected_apps_order", "");
         List<String> selectedApps;
         
         if (savedOrderString.isEmpty()) {
-            // Если пусто (например, при первом запуске), берем из старого формата
             Set<String> oldSet = prefs.getStringSet("selected_apps", new HashSet<>());
             selectedApps = new ArrayList<>(oldSet);
         } else {

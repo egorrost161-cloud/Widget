@@ -4,19 +4,13 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    
-    <!-- Розовый квадрат -->
-    <path
-        android:fillColor="#F4527E"
-        android:pathData="M30,32 C30,28 33,25 37,25 L48,25 C52,25 55,28 55,32 L55,43 C55,47 52,50 48,50 L37,50 C33,50 30,47 30,43 Z" />
-
-    <!-- Зеленый квадрат -->
-    <path
-        android:fillColor="#17B897"
-        android:pathData="M58,32 C58,28 61,25 65,25 L76,25 C80,25 83,28 83,32 L83,43 C83,47 80,50 76,50 L65,50 C61,50 58,47 58,43 Z" />
-
-    <!-- Желтый прямоугольник -->
-    <path
-        android:fillColor="#F4C11E"
-        android:pathData="M30,56 C30,52 33,50 36,50 L78,50 C82,50 84,52 84,56 L84,76 C84,80 81,82 78,82 L36,82 C32,82 30,80 30,76 Z" />
+    <group
+        android:scaleX="1.25"
+        android:scaleY="1.25"
+        android:translateX="-13.5"
+        android:translateY="-13.5">
+        <path android:fillColor="#F4527E" android:pathData="M30,32 C30,28 33,25 37,25 L48,25 C52,25 55,28 55,32 L55,43 C55,47 52,50 48,50 L37,50 C33,50 30,47 30,43 Z" />
+        <path android:fillColor="#17B897" android:pathData="M58,32 C58,28 61,25 65,25 L76,25 C80,25 83,28 83,32 L83,43 C83,47 80,50 76,50 L65,50 C61,50 58,47 58,43 Z" />
+        <path android:fillColor="#F4C11E" android:pathData="M30,56 C30,52 33,50 36,50 L78,50 C82,50 84,52 84,56 L84,76 C84,80 81,82 78,82 L36,82 C32,82 30,80 30,76 Z" />
+    </group>
 </vector>

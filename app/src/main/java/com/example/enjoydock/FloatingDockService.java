@@ -10,6 +10,8 @@ import android.app.usage.UsageStatsManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.content.pm.PackageManager;
+import android.content.pm.ResolveInfo;
 import android.content.pm.ServiceInfo;
 import android.graphics.Color;
 import android.graphics.Outline;
@@ -136,13 +138,7 @@ public class FloatingDockService extends Service {
                 lp.setMargins(iconMargin, 0, iconMargin, 0);
                 imageView.setLayoutParams(lp);
                 final String finalPkg = pkg;
-                imageView.setOnClickListener(v -> {
-                    Intent launchIntent = getPackageManager().getLaunchIntentForPackage(finalPkg);
-                    if (launchIntent != null) {
-                        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                        try { startActivity(launchIntent); } catch (Exception e) {}
-                    }
-                });
+                imageView.setOnClickListener(v -> launchApp(finalPkg));
                 dockLayout.addView(imageView);
             } catch (Exception e) {}
         }
@@ -207,6 +203,46 @@ public class FloatingDockService extends Service {
         }
 
         windowManager.addView(dockWrapper, params);
+    }
+
+    // НОВЫЙ МЕТОД: Умный запуск приложений (включая системные)
+    private void launchApp(String pkg) {
+        PackageManager pm = getPackageManager();
+        Intent launchIntent = pm.getLaunchIntentForPackage(pkg);
+
+        if (launchIntent != null) {
+            launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try {
+                startActivity(launchIntent);
+                return;
+            } catch (Exception ignored) {}
+        }
+
+        // Если обычный запуск не удался (системное приложение), пробуем найти его главную Activity
+        Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
+        mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+        mainIntent.setPackage(pkg);
+        List<ResolveInfo> resolveInfos = pm.queryIntentActivities(mainIntent, 0);
+
+        if (!resolveInfos.isEmpty()) {
+            ResolveInfo info = resolveInfos.get(0);
+            Intent intent = new Intent(Intent.ACTION_MAIN);
+            intent.addCategory(Intent.CATEGORY_LAUNCHER);
+            intent.setClassName(pkg, info.activityInfo.name);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            try {
+                startActivity(intent);
+                return;
+            } catch (Exception ignored) {}
+        }
+
+        // Если и это не сработало - пробуем открыть настройки приложения
+        try {
+            Intent intent = new Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS);
+            intent.setData(android.net.Uri.parse("package:" + pkg));
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            startActivity(intent);
+        } catch (Exception ignored) {}
     }
 
     private void checkActiveApp() {
